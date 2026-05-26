@@ -71,11 +71,21 @@
         /* Upload area */
         .upload-area {
             border: 2px dashed #ced4da; border-radius: 8px;
-            padding: 20px; text-align: center; cursor: pointer;
+            padding: 12px; text-align: center; cursor: pointer;
             color: #6c757d; font-size: 13px; transition: border-color 0.15s;
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
         }
         .upload-area:hover { border-color: #fe8e14; }
         .upload-area.has-image { border-color: #28a745; border-style: solid; }
+        #sampleThumbnail { display: none; max-width: 100%; max-height: 140px; border-radius: 4px; object-fit: contain; }
+        #pdfPlaceholder {
+            display: none; width: 80px; height: 100px; background: #fff; border: 2px solid #dee2e6;
+            border-radius: 4px; align-items: center; justify-content: center; font-size: 16px;
+            font-weight: 700; color: #dc3545; flex-shrink: 0;
+        }
+        .upload-area.has-image #sampleThumbnail.show { display: block; }
+        .upload-area.has-image #pdfPlaceholder.show { display: flex; }
+        .upload-area.has-image #uploadHint { font-size: 11px; }
         #fileInput { display: none; }
 
         .no-image-hint { color: #fe8e14; font-size: 12px; margin-top: 4px; }
@@ -134,7 +144,9 @@
                 <!-- Sample image -->
                 <div class="section">
                     <div class="section-title">Sample File (Image / PDF)</div>
-                    <div class="upload-area" id="uploadArea" title="Click to upload a sample image or PDF">
+                    <div class="upload-area" id="uploadArea" title="Click to replace the sample image">
+                        <img id="sampleThumbnail" src="" alt="Sample preview">
+                        <div id="pdfPlaceholder"><span>PDF</span></div>
                         <span id="uploadHint">Click to upload a sample image or PDF</span>
                     </div>
                     <input type="file" id="fileInput" accept="image/*,.pdf">
@@ -272,6 +284,30 @@
                 return template.sampleImage;
             }
 
+            function updateSamplePreview(base64) {
+                const img = document.getElementById('sampleThumbnail');
+                const pdfPlaceholder = document.getElementById('pdfPlaceholder');
+                if (!base64) {
+                    img.classList.remove('show');
+                    pdfPlaceholder.classList.remove('show');
+                    uploadArea.classList.remove('has-image');
+                    uploadHint.textContent = 'Click to upload a sample image or PDF';
+                    return;
+                }
+                const isPdf = base64.startsWith('data:application/pdf');
+                uploadArea.classList.add('has-image');
+                if (isPdf) {
+                    img.classList.remove('show');
+                    pdfPlaceholder.classList.add('show');
+                    uploadHint.textContent = 'PDF - Click to replace';
+                } else {
+                    img.src = base64;
+                    img.classList.add('show');
+                    pdfPlaceholder.classList.remove('show');
+                    uploadHint.textContent = 'Click to replace sample image';
+                }
+            }
+
             // =========================================================
             // Template management
             // =========================================================
@@ -301,6 +337,7 @@
                     currentTemplateIndex = -1;
                     templateSelect.value = '';
                     clearAllAnnotations();
+                    updateSamplePreview('');
                     renderZoneList();
                     updateButtons();
                     return;
@@ -318,6 +355,9 @@
                 zoneAnnotationMap.clear();
 
                 if (!currentDoc || !editViewer) return;
+
+                // Show preview in sidebar
+                updateSamplePreview(template.sampleImage || '');
 
                 // Load sample image/PDF
                 if (template.sampleImage) {
@@ -403,6 +443,7 @@
                 zoneAnnotationMap.clear();
                 if (currentTemplateIndex === index) {
                     clearAllAnnotations();
+                    updateSamplePreview('');
                     currentTemplateIndex = -1;
                     templateSelect.value = '';
                 } else if (currentTemplateIndex > index) {
@@ -751,8 +792,7 @@
                 renderZoneList();
                 updateButtons();
 
-                uploadHint.textContent = file.name;
-                uploadArea.classList.add('has-image');
+                updateSamplePreview(base64);
                 fileInput.value = '';
             });
 
