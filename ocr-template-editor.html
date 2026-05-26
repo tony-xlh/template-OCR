@@ -9,26 +9,26 @@
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        html, body { width: 100%; height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #e0e0e0; overflow: hidden; }
+        html, body { width: 100%; height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; color: #212529; overflow: hidden; }
 
         .app { display: flex; height: 100%; }
 
         /* ---- Sidebar ---- */
         .sidebar {
             width: 340px; min-width: 340px; height: 100%;
-            background: #16213e; border-right: 1px solid #0f3460;
+            background: #ffffff; border-right: 1px solid #dee2e6;
             display: flex; flex-direction: column; overflow: hidden;
         }
         .sidebar-header {
-            padding: 16px 20px; background: #0f3460;
+            padding: 16px 20px; background: #fe8e14; color: #fff;
             font-size: 18px; font-weight: 700; letter-spacing: 0.5px;
             display: flex; align-items: center; gap: 8px;
         }
         .sidebar-header .icon { font-size: 22px; }
         .sidebar-content { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
 
-        .section { background: #1a1a2e; border-radius: 8px; padding: 12px; border: 1px solid #0f3460; }
-        .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 8px; }
+        .section { background: #ffffff; border-radius: 8px; padding: 12px; border: 1px solid #e9ecef; }
+        .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #6c757d; margin-bottom: 8px; }
 
         /* Template selector */
         .template-select-row { display: flex; gap: 6px; }
@@ -36,21 +36,21 @@
         .btn-group { display: flex; gap: 4px; margin-top: 6px; }
 
         select, input[type="text"] {
-            background: #0f3460; color: #e0e0e0; border: 1px solid #1a508b;
+            background: #ffffff; color: #212529; border: 1px solid #ced4da;
             padding: 6px 10px; border-radius: 4px; font-size: 13px; outline: none;
         }
-        select:focus, input[type="text"]:focus { border-color: #e94560; }
+        select:focus, input[type="text"]:focus { border-color: #fe8e14; }
 
         button {
-            background: #1a508b; color: #e0e0e0; border: none;
+            background: #6c757d; color: #fff; border: none;
             padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;
             white-space: nowrap; transition: background 0.15s;
         }
-        button:hover { background: #0f3460; }
-        button.primary { background: #e94560; }
-        button.primary:hover { background: #c73652; }
-        button.danger { background: #6b2c2c; }
-        button.danger:hover { background: #8b3a3a; }
+        button:hover { background: #5a6268; }
+        button.primary { background: #fe8e14; }
+        button.primary:hover { background: #e67e00; }
+        button.danger { background: #dc3545; }
+        button.danger:hover { background: #c82333; }
         button.small { padding: 3px 8px; font-size: 11px; }
         button:disabled { opacity: 0.4; cursor: default; }
 
@@ -59,29 +59,29 @@
         .zone-item {
             display: flex; align-items: center; gap: 6px;
             padding: 6px 8px; border-radius: 4px;
-            background: #0f3460; border: 2px solid transparent; cursor: pointer;
+            background: #f8f9fa; border: 2px solid transparent; cursor: pointer;
             transition: border-color 0.15s;
         }
-        .zone-item:hover { background: #1a3a6e; }
-        .zone-item.active { border-color: #e94560; }
-        .zone-color { width: 14px; height: 14px; border-radius: 2px; flex-shrink: 0; border: 2px solid rgba(255,255,255,0.4); }
+        .zone-item:hover { background: #e9ecef; }
+        .zone-item.active { border-color: #fe8e14; }
+        .zone-color { width: 14px; height: 14px; border-radius: 2px; flex-shrink: 0; border: 2px solid rgba(0,0,0,0.15); }
         .zone-item input { flex: 1; min-width: 0; padding: 4px 6px; font-size: 12px; }
-        .zone-coords { font-size: 10px; color: #888; white-space: nowrap; }
+        .zone-coords { font-size: 10px; color: #6c757d; white-space: nowrap; }
 
         /* Upload area */
         .upload-area {
-            border: 2px dashed #1a508b; border-radius: 8px;
+            border: 2px dashed #ced4da; border-radius: 8px;
             padding: 20px; text-align: center; cursor: pointer;
-            color: #888; font-size: 13px; transition: border-color 0.15s;
+            color: #6c757d; font-size: 13px; transition: border-color 0.15s;
         }
-        .upload-area:hover { border-color: #e94560; }
-        .upload-area.has-image { border-color: #2ecc71; border-style: solid; }
+        .upload-area:hover { border-color: #fe8e14; }
+        .upload-area.has-image { border-color: #28a745; border-style: solid; }
         #fileInput { display: none; }
 
-        .no-image-hint { color: #e94560; font-size: 12px; margin-top: 4px; }
+        .no-image-hint { color: #fe8e14; font-size: 12px; margin-top: 4px; }
 
         /* ---- Viewer ---- */
-        .viewer-container { flex: 1; height: 100%; position: relative; background: #111; }
+        .viewer-container { flex: 1; height: 100%; position: relative; background: #e9ecef; }
         #viewer { width: 100%; height: 100%; }
 
         /* Mode indicator */
@@ -101,8 +101,8 @@
         /* Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #1a508b; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #e94560; }
+        ::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #adb5bd; }
     </style>
 </head>
 <body>
@@ -173,7 +173,7 @@
             // =========================================================
             const STORAGE_KEY = 'ocr_templates';
             const ZONE_COLORS = [
-                '#e94560', '#2ecc71', '#3498db', '#f39c12', '#9b59b6',
+                '#fe8e14', '#2ecc71', '#3498db', '#f39c12', '#9b59b6',
                 '#1abc9c', '#e74c3c', '#2980b9', '#d35400', '#27ae60'
             ];
 
@@ -427,7 +427,7 @@
                 zoneAnnotationMap.clear();
 
                 if (!template || !template.zones || template.zones.length === 0) {
-                    zoneList.innerHTML = '<div style="color:#666;font-size:12px;text-align:center;padding:12px;">No zones yet. Click the button below to add one.</div>';
+                    zoneList.innerHTML = '<div style="color:#6c757d;font-size:12px;text-align:center;padding:12px;">No zones yet. Click the button below to add one.</div>';
                     zoneCount.textContent = '(0)';
                 } else {
                     zoneList.innerHTML = template.zones.map((z, i) => {
