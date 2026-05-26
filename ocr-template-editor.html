@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR Template Editor</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dynamsoft-document-viewer@latest/dist/ddv.css">
+    <script src="https://cdn.jsdelivr.net/npm/dynamsoft-document-viewer@latest/dist/ddv.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body { width: 100%; height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #e0e0e0; overflow: hidden; }
+
+        .app { display: flex; height: 100%; }
+
+        /* ---- Sidebar ---- */
+        .sidebar {
+            width: 340px; min-width: 340px; height: 100%;
+            background: #16213e; border-right: 1px solid #0f3460;
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        .sidebar-header {
+            padding: 16px 20px; background: #0f3460;
+            font-size: 18px; font-weight: 700; letter-spacing: 0.5px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .sidebar-header .icon { font-size: 22px; }
+        .sidebar-content { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+
+        .section { background: #1a1a2e; border-radius: 8px; padding: 12px; border: 1px solid #0f3460; }
+        .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 8px; }
+
+        /* Template selector */
+        .template-select-row { display: flex; gap: 6px; }
+        .template-select-row select { flex: 1; }
+        .btn-group { display: flex; gap: 4px; margin-top: 6px; }
+
+        select, input[type="text"] {
+            background: #0f3460; color: #e0e0e0; border: 1px solid #1a508b;
+            padding: 6px 10px; border-radius: 4px; font-size: 13px; outline: none;
+        }
+        select:focus, input[type="text"]:focus { border-color: #e94560; }
+
+        button {
+            background: #1a508b; color: #e0e0e0; border: none;
+            padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;
+            white-space: nowrap; transition: background 0.15s;
+        }
+        button:hover { background: #0f3460; }
+        button.primary { background: #e94560; }
+        button.primary:hover { background: #c73652; }
+        button.danger { background: #6b2c2c; }
+        button.danger:hover { background: #8b3a3a; }
+        button.small { padding: 3px 8px; font-size: 11px; }
+        button:disabled { opacity: 0.4; cursor: default; }
+
+        /* Zone list */
+        .zone-list { display: flex; flex-direction: column; gap: 4px; max-height: 300px; overflow-y: auto; }
+        .zone-item {
+            display: flex; align-items: center; gap: 6px;
+            padding: 6px 8px; border-radius: 4px;
+            background: #0f3460; border: 2px solid transparent; cursor: pointer;
+            transition: border-color 0.15s;
+        }
+        .zone-item:hover { background: #1a3a6e; }
+        .zone-item.active { border-color: #e94560; }
+        .zone-color { width: 14px; height: 14px; border-radius: 2px; flex-shrink: 0; border: 2px solid rgba(255,255,255,0.4); }
+        .zone-item input { flex: 1; min-width: 0; padding: 4px 6px; font-size: 12px; }
+        .zone-coords { font-size: 10px; color: #888; white-space: nowrap; }
+
+        /* Upload area */
+        .upload-area {
+            border: 2px dashed #1a508b; border-radius: 8px;
+            padding: 20px; text-align: center; cursor: pointer;
+            color: #888; font-size: 13px; transition: border-color 0.15s;
+        }
+        .upload-area:hover { border-color: #e94560; }
+        .upload-area.has-image { border-color: #2ecc71; border-style: solid; }
+        #fileInput { display: none; }
+
+        .no-image-hint { color: #e94560; font-size: 12px; margin-top: 4px; }
+
+        /* ---- Viewer ---- */
+        .viewer-container { flex: 1; height: 100%; position: relative; background: #111; }
+        #viewer { width: 100%; height: 100%; }
+
+        /* Mode indicator */
+        .mode-indicator {
+            position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+            background: rgba(233, 69, 96, 0.9); color: #fff;
+            padding: 6px 16px; border-radius: 20px; font-size: 13px;
+            pointer-events: none; z-index: 100; display: none;
+            animation: pulse 1.5s infinite;
+        }
+        .mode-indicator.visible { display: block; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #1a508b; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #e94560; }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <span class="icon">&#9683;</span> OCR Template Editor
+            </div>
+            <div class="sidebar-content">
+                <!-- Template management -->
+                <div class="section">
+                    <div class="section-title">Template Management</div>
+                    <div class="template-select-row">
+                        <select id="templateSelect"><option value="">-- New Template --</option></select>
+                    </div>
+                    <div class="btn-group">
+                        <button id="btnNewTemplate" class="primary">New</button>
+                        <button id="btnRenameTemplate">Rename</button>
+                        <button id="btnDeleteTemplate" class="danger">Delete</button>
+                    </div>
+                    <div class="btn-group" style="margin-top:4px;">
+                        <button id="btnExportTemplates">Export All</button>
+                        <button id="btnImportTemplates">Import</button>
+                        <input type="file" id="importFileInput" accept=".json" style="display:none;">
+                    </div>
+                </div>
+
+                <!-- Sample image -->
+                <div class="section">
+                    <div class="section-title">Sample File (Image / PDF)</div>
+                    <div class="upload-area" id="uploadArea" title="Click to upload a sample image or PDF">
+                        <span id="uploadHint">Click to upload a sample image or PDF</span>
+                    </div>
+                    <input type="file" id="fileInput" accept="image/*,.pdf">
+                </div>
+
+                <!-- Zone management -->
+                <div class="section">
+                    <div class="section-title">
+                        Recognition Zones
+                        <span id="zoneCount" style="color:#888;">(0)</span>
+                    </div>
+                    <div class="zone-list" id="zoneList">
+                        <div style="color:#666;font-size:12px;text-align:center;padding:12px;">
+                            No zones yet. Click the button below to add one.
+                        </div>
+                    </div>
+                    <div class="btn-group" style="margin-top:6px;">
+                        <button id="btnAddZone" class="primary" disabled>+ Add Zone</button>
+                        <button id="btnDeleteZone" class="danger small" disabled>Delete Selected</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Viewer -->
+        <div class="viewer-container">
+            <div id="viewer"></div>
+            <div class="mode-indicator" id="modeIndicator">Drag on the image to draw a rectangular zone</div>
+        </div>
+    </div>
+
+    <script type="module">
+        (async () => {
+            // =========================================================
+            // Constants
+            // =========================================================
+            const STORAGE_KEY = 'ocr_templates';
+            const ZONE_COLORS = [
+                '#e94560', '#2ecc71', '#3498db', '#f39c12', '#9b59b6',
+                '#1abc9c', '#e74c3c', '#2980b9', '#d35400', '#27ae60'
+            ];
+
+            // =========================================================
+            // State
+            // =========================================================
+            let templates = [];             // array of template objects
+            let currentTemplateIndex = -1;   // index into templates
+            let zoneAnnotationMap = new Map(); // annotationUid -> zoneIndex
+            let isDrawing = false;
+            let editViewer = null;
+            let currentDoc = null;
+
+            // =========================================================
+            // DOM refs
+            // =========================================================
+            const $ = (id) => document.getElementById(id);
+            const templateSelect = $('templateSelect');
+            const zoneList = $('zoneList');
+            const zoneCount = $('zoneCount');
+            const uploadArea = $('uploadArea');
+            const uploadHint = $('uploadHint');
+            const fileInput = $('fileInput');
+            const modeIndicator = $('modeIndicator');
+            const btnAddZone = $('btnAddZone');
+            const btnDeleteZone = $('btnDeleteZone');
+            const btnNewTemplate = $('btnNewTemplate');
+            const btnRenameTemplate = $('btnRenameTemplate');
+            const btnDeleteTemplate = $('btnDeleteTemplate');
+            const btnExportTemplates = $('btnExportTemplates');
+            const btnImportTemplates = $('btnImportTemplates');
+            const importFileInput = $('importFileInput');
+
+            // =========================================================
+            // Persistence
+            // =========================================================
+            function loadTemplates() {
+                try {
+                    const raw = localStorage.getItem(STORAGE_KEY);
+                    templates = raw ? JSON.parse(raw) : [];
+                } catch (e) {
+                    templates = [];
+                }
+            }
+
+            function saveTemplates() {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(templates, null, 2));
+                refreshTemplateSelect();
+            }
+
+            // =========================================================
+            // Helpers
+            // =========================================================
+            function getCurrentTemplate() {
+                if (currentTemplateIndex >= 0 && currentTemplateIndex < templates.length) {
+                    return templates[currentTemplateIndex];
+                }
+                return null;
+            }
+
+            function base64ToBlob(dataUrl) {
+                // dataUrl format: "data:<mime>;base64,<data>"
+                const parts = dataUrl.split(',');
+                const header = parts[0];
+                const mimeMatch = header.match(/data:([^;]*)/);
+                const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
+                const base64 = parts[1];
+                const byteChars = atob(base64);
+                const byteArrays = [];
+                for (let offset = 0; offset < byteChars.length; offset += 512) {
+                    const slice = byteChars.slice(offset, offset + 512);
+                    const byteNumbers = new Array(slice.length);
+                    for (let i = 0; i < slice.length; i++) {
+                        byteNumbers[i] = slice.charCodeAt(i);
+                    }
+                    byteArrays.push(new Uint8Array(byteNumbers));
+                }
+                return new Blob(byteArrays, { type: mimeType });
+            }
+
+            function blobToBase64(blob) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            }
+
+            function getZoneColor(index) {
+                return ZONE_COLORS[index % ZONE_COLORS.length];
+            }
+
+            function getImageBase64(template) {
+                if (!template || !template.sampleImage) return null;
+                return template.sampleImage;
+            }
+
+            // =========================================================
+            // Template management
+            // =========================================================
+            function refreshTemplateSelect() {
+                const currentValue = templateSelect.value;
+                templateSelect.innerHTML = '<option value="">-- New Template --</option>';
+                templates.forEach((t, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = t.templateName || `Template ${i + 1}`;
+                    templateSelect.appendChild(opt);
+                });
+                if (currentValue && parseInt(currentValue) < templates.length) {
+                    templateSelect.value = currentValue;
+                } else if (currentTemplateIndex >= 0 && currentTemplateIndex < templates.length) {
+                    templateSelect.value = currentTemplateIndex;
+                }
+            }
+
+            async function selectTemplate(index) {
+                // Save current template annotations first
+                if (currentTemplateIndex >= 0 && currentTemplateIndex < templates.length) {
+                    syncAnnotationsToTemplate();
+                }
+
+                if (index < 0 || index >= templates.length) {
+                    currentTemplateIndex = -1;
+                    templateSelect.value = '';
+                    clearAllAnnotations();
+                    renderZoneList();
+                    updateButtons();
+                    return;
+                }
+
+                currentTemplateIndex = index;
+                templateSelect.value = index;
+                await loadTemplateToViewer(templates[index]);
+                renderZoneList();
+                updateButtons();
+            }
+
+            async function loadTemplateToViewer(template) {
+                clearAllAnnotations();
+                zoneAnnotationMap.clear();
+
+                if (!currentDoc || !editViewer) return;
+
+                // Load sample image/PDF
+                if (template.sampleImage) {
+                    const blob = base64ToBlob(template.sampleImage);
+                    // Delete existing pages and load new one
+                    if (currentDoc.pages.length > 0) {
+                        currentDoc.deleteAllPages();
+                    }
+                    const isPdf = blob.type === 'application/pdf';
+                    const source = isPdf
+                        ? { fileData: blob, convertMode: Dynamsoft.DDV.EnumConvertMode.CM_AUTO }
+                        : { fileData: blob };
+                    await currentDoc.loadSource([source]);
+
+                    // Wait a tick for page to render, then create zone annotations
+                    await sleep(300);
+
+                    const pageUid = editViewer.getCurrentPageUid();
+                    if (pageUid && template.zones && template.zones.length > 0) {
+                        for (let i = 0; i < template.zones.length; i++) {
+                            const zone = template.zones[i];
+                            const rect = Dynamsoft.DDV.annotationManager.createAnnotation(pageUid, 'rectangle', {
+                                x: zone.x,
+                                y: zone.y,
+                                width: zone.width,
+                                height: zone.height,
+                                borderColor: getZoneColor(i),
+                                borderWidth: 2,
+                                background: getZoneColor(i) + '22',
+                                opacity: 0.85
+                            });
+                            zoneAnnotationMap.set(rect.uid, i);
+                        }
+                    }
+                }
+
+                editViewer.fitMode = 'width';
+            }
+
+            function syncAnnotationsToTemplate() {
+                const template = getCurrentTemplate();
+                if (!template || !currentDoc) return;
+
+                const pageUid = editViewer.getCurrentPageUid();
+                if (!pageUid) return;
+
+                const annotations = Dynamsoft.DDV.annotationManager.getAnnotationsByPage(pageUid);
+                // Rebuild zones from current annotations, preserving names
+                const zoneMap = new Map(); // zoneIndex -> { name, annotation }
+                for (const [annUid, zoneIdx] of zoneAnnotationMap) {
+                    const ann = annotations.find(a => a.uid === annUid);
+                    if (ann) {
+                        const opts = ann.getOptions();
+                        zoneMap.set(zoneIdx, {
+                            name: template.zones[zoneIdx]?.name || '',
+                            x: opts.x, y: opts.y,
+                            width: opts.width, height: opts.height
+                        });
+                    }
+                }
+
+                template.zones = Array.from(zoneMap.entries())
+                    .sort(([a], [b]) => a - b)
+                    .map(([_, z]) => z);
+            }
+
+            async function createTemplate(name) {
+                const template = {
+                    templateName: name || `Template ${templates.length + 1}`,
+                    sampleImage: '',
+                    zones: []
+                };
+                templates.push(template);
+                saveTemplates();
+                await selectTemplate(templates.length - 1);
+            }
+
+            async function deleteTemplate(index) {
+                if (index < 0 || index >= templates.length) return;
+                if (!confirm(`Delete template "${templates[index].templateName}"?`)) return;
+
+                templates.splice(index, 1);
+                zoneAnnotationMap.clear();
+                if (currentTemplateIndex === index) {
+                    clearAllAnnotations();
+                    currentTemplateIndex = -1;
+                    templateSelect.value = '';
+                } else if (currentTemplateIndex > index) {
+                    currentTemplateIndex--;
+                }
+                saveTemplates();
+                renderZoneList();
+                updateButtons();
+            }
+
+            async function renameTemplate(index, newName) {
+                if (index < 0 || index >= templates.length) return;
+                templates[index].templateName = newName;
+                saveTemplates();
+            }
+
+            // =========================================================
+            // Zone management
+            // =========================================================
+            function renderZoneList() {
+                const template = getCurrentTemplate();
+                zoneAnnotationMap.clear();
+
+                if (!template || !template.zones || template.zones.length === 0) {
+                    zoneList.innerHTML = '<div style="color:#666;font-size:12px;text-align:center;padding:12px;">No zones yet. Click the button below to add one.</div>';
+                    zoneCount.textContent = '(0)';
+                } else {
+                    zoneList.innerHTML = template.zones.map((z, i) => {
+                        const color = getZoneColor(i);
+                        return `
+                            <div class="zone-item" data-index="${i}" data-color="${color}">
+                                <div class="zone-color" style="background:${color};"></div>
+                                <input type="text" value="${escapeHtml(z.name)}"
+                                    data-index="${i}" class="zone-name-input"
+                                    placeholder="Zone name">
+                                <span class="zone-coords">(${Math.round(z.x)},${Math.round(z.y)} ${Math.round(z.width)}x${Math.round(z.height)})</span>
+                                <button class="small danger delete-zone-btn" data-index="${i}" title="Delete zone">x</button>
+                            </div>`;
+                    }).join('');
+                    zoneCount.textContent = `(${template.zones.length})`;
+
+                    // Rebuild the annotation map from current annotations
+                    rebuildAnnotationMap();
+                }
+
+                updateButtons();
+            }
+
+            function rebuildAnnotationMap() {
+                zoneAnnotationMap.clear();
+                if (!currentDoc || !editViewer) return;
+                const pageUid = editViewer.getCurrentPageUid();
+                if (!pageUid) return;
+
+                const annotations = Dynamsoft.DDV.annotationManager.getAnnotationsByPage(pageUid);
+                const template = getCurrentTemplate();
+                if (!template || !template.zones) return;
+
+                // Match annotations to zones by order (both should be in sync)
+                const rectAnns = annotations.filter(a => a.type === 'rectangle');
+                for (let i = 0; i < Math.min(rectAnns.length, template.zones.length); i++) {
+                    zoneAnnotationMap.set(rectAnns[i].uid, i);
+                }
+            }
+
+            function escapeHtml(str) {
+                const div = document.createElement('div');
+                div.textContent = str || '';
+                return div.innerHTML;
+            }
+
+            function selectZone(index) {
+                if (!editViewer || !currentDoc) return;
+                const pageUid = editViewer.getCurrentPageUid();
+                if (!pageUid) return;
+
+                // Find the annotation for this zone
+                let targetUid = null;
+                for (const [annUid, zoneIdx] of zoneAnnotationMap) {
+                    if (zoneIdx === index) {
+                        targetUid = annUid;
+                        break;
+                    }
+                }
+
+                if (targetUid) {
+                    editViewer.toolMode = 'annotation';
+                    editViewer.annotationMode = 'select';
+                    editViewer.selectAnnotations([targetUid]);
+                }
+
+                // Highlight in list
+                document.querySelectorAll('.zone-item').forEach(el => el.classList.remove('active'));
+                const item = document.querySelector(`.zone-item[data-index="${index}"]`);
+                if (item) item.classList.add('active');
+            }
+
+            function startDrawZone() {
+                if (!editViewer || !currentDoc) return;
+                const pageUid = editViewer.getCurrentPageUid();
+                if (!pageUid) {
+                    alert('Please upload a sample image first');
+                    return;
+                }
+
+                isDrawing = true;
+                editViewer.toolMode = 'annotation';
+                editViewer.annotationMode = 'rectangle';
+                modeIndicator.classList.add('visible');
+            }
+
+            function stopDrawMode() {
+                isDrawing = false;
+                modeIndicator.classList.remove('visible');
+                if (editViewer) {
+                    editViewer.toolMode = 'annotation';
+                    editViewer.annotationMode = 'select';
+                }
+            }
+
+            async function addZoneFromAnnotation(annotationUid) {
+                const template = getCurrentTemplate();
+                if (!template || !currentDoc) return;
+
+                const annotations = Dynamsoft.DDV.annotationManager.getAnnotationsByUids([annotationUid]);
+                if (annotations.length === 0) return;
+
+                const ann = annotations[0];
+                const opts = ann.getOptions();
+
+                // Prompt for zone name
+                const name = prompt('Enter zone name:', `Zone ${template.zones.length + 1}`);
+                if (name === null) {
+                    // Cancelled - remove the annotation
+                    Dynamsoft.DDV.annotationManager.deleteAnnotations([annotationUid]);
+                    return;
+                }
+
+                const zone = {
+                    name: name || `Zone ${template.zones.length + 1}`,
+                    x: opts.x,
+                    y: opts.y,
+                    width: opts.width,
+                    height: opts.height
+                };
+
+                template.zones.push(zone);
+                const zoneIndex = template.zones.length - 1;
+                zoneAnnotationMap.set(annotationUid, zoneIndex);
+
+                // Update annotation color to match zone index
+                const color = getZoneColor(zoneIndex);
+                ann.updateOptions({
+                    borderColor: color,
+                    borderWidth: 2,
+                    background: color + '22',
+                    opacity: 0.85
+                });
+
+                saveTemplates();
+                renderZoneList();
+                stopDrawMode();
+            }
+
+            async function deleteZone(index) {
+                const template = getCurrentTemplate();
+                if (!template || index < 0 || index >= template.zones.length) return;
+
+                // Find and delete the corresponding annotation
+                for (const [annUid, zoneIdx] of zoneAnnotationMap) {
+                    if (zoneIdx === index) {
+                        Dynamsoft.DDV.annotationManager.deleteAnnotations([annUid]);
+                        zoneAnnotationMap.delete(annUid);
+                        break;
+                    }
+                }
+
+                template.zones.splice(index, 1);
+
+                // Re-index remaining zone-annotation mappings
+                const newMap = new Map();
+                for (const [annUid, zoneIdx] of zoneAnnotationMap) {
+                    newMap.set(annUid, zoneIdx > index ? zoneIdx - 1 : zoneIdx);
+                }
+                zoneAnnotationMap = newMap;
+
+                saveTemplates();
+                renderZoneList();
+            }
+
+            function clearAllAnnotations() {
+                if (!currentDoc || !editViewer) return;
+                const pageUid = editViewer.getCurrentPageUid();
+                if (!pageUid) return;
+
+                const annotations = Dynamsoft.DDV.annotationManager.getAnnotationsByPage(pageUid);
+                if (annotations.length > 0) {
+                    Dynamsoft.DDV.annotationManager.deleteAnnotations(annotations.map(a => a.uid));
+                }
+                zoneAnnotationMap.clear();
+            }
+
+            // =========================================================
+            // Import / Export
+            // =========================================================
+            function exportTemplates() {
+                syncAnnotationsToTemplate();
+                saveTemplates();
+                const json = JSON.stringify(templates, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'ocr_templates.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            function importTemplates(file) {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const imported = JSON.parse(e.target.result);
+                        if (!Array.isArray(imported)) throw new Error('Invalid format');
+                        if (!confirm(`Import ${imported.length} template(s)? Existing templates will be merged (same name = overwrite).`)) return;
+
+                        // Merge: overwrite by name, append new ones
+                        const existingNames = new Map(templates.map((t, i) => [t.templateName, i]));
+                        for (const t of imported) {
+                            if (!t.templateName) continue;
+                            const existingIdx = existingNames.get(t.templateName);
+                            if (existingIdx !== undefined) {
+                                templates[existingIdx] = t;
+                            } else {
+                                templates.push(t);
+                            }
+                        }
+                        saveTemplates();
+                        await selectTemplate(0);
+                        alert('Import successful!');
+                    } catch (err) {
+                        alert('Import failed: ' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            // =========================================================
+            // UI state
+            // =========================================================
+            function updateButtons() {
+                const hasTemplate = currentTemplateIndex >= 0 && currentTemplateIndex < templates.length;
+                const hasImage = hasTemplate && !!getCurrentTemplate().sampleImage;
+
+                btnAddZone.disabled = !hasImage;
+                btnDeleteZone.disabled = !hasTemplate;
+                btnRenameTemplate.disabled = !hasTemplate;
+                btnDeleteTemplate.disabled = !hasTemplate;
+            }
+
+            function sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            // =========================================================
+            // Event handlers - Sidebar
+            // =========================================================
+            templateSelect.addEventListener('change', async () => {
+                const val = templateSelect.value;
+                if (val === '') {
+                    await selectTemplate(-1);
+                } else {
+                    await selectTemplate(parseInt(val));
+                }
+            });
+
+            btnNewTemplate.addEventListener('click', async () => {
+                const name = prompt('Template name:');
+                if (!name) return;
+                await createTemplate(name);
+            });
+
+            btnRenameTemplate.addEventListener('click', async () => {
+                const template = getCurrentTemplate();
+                if (!template) return;
+                const newName = prompt('New name:', template.templateName);
+                if (!newName || newName === template.templateName) return;
+                await renameTemplate(currentTemplateIndex, newName);
+            });
+
+            btnDeleteTemplate.addEventListener('click', async () => {
+                if (currentTemplateIndex < 0) return;
+                await deleteTemplate(currentTemplateIndex);
+            });
+
+            btnExportTemplates.addEventListener('click', () => exportTemplates());
+            btnImportTemplates.addEventListener('click', () => importFileInput.click());
+
+            importFileInput.addEventListener('change', () => {
+                if (importFileInput.files.length > 0) {
+                    importTemplates(importFileInput.files[0]);
+                    importFileInput.value = '';
+                }
+            });
+
+            // Upload image/PDF
+            uploadArea.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', async () => {
+                if (fileInput.files.length === 0) return;
+                const file = fileInput.files[0];
+
+                // Load file into viewer via DDV loadSource (supports images & PDF)
+                if (!currentDoc || !editViewer) return;
+
+                // Ensure we have a template selected
+                let template = getCurrentTemplate();
+                if (!template) {
+                    await createTemplate(file.name.replace(/\.[^.]+$/, '') || 'New Template');
+                    template = getCurrentTemplate();
+                }
+
+                // Clear existing pages and load the new file directly via loadSource
+                if (currentDoc.pages.length > 0) {
+                    currentDoc.deleteAllPages();
+                }
+                clearAllAnnotations();
+                zoneAnnotationMap.clear();
+
+                // Convert File to Blob (DDV requires Blob, not File)
+                const blob = new Blob([file], { type: file.type });
+
+                // Build source: for PDF use PdfSource with convertMode
+                const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                const source = isPdf
+                    ? { fileData: blob, convertMode: Dynamsoft.DDV.EnumConvertMode.CM_AUTO }
+                    : { fileData: blob };
+
+                await currentDoc.loadSource([source]);
+                await sleep(300);
+                editViewer.fitMode = 'width';
+
+                // Store base64 for template persistence
+                const base64 = await blobToBase64(file);
+                template.sampleImage = base64;
+                saveTemplates();
+                renderZoneList();
+                updateButtons();
+
+                uploadHint.textContent = file.name;
+                uploadArea.classList.add('has-image');
+                fileInput.value = '';
+            });
+
+            // Zone list interactions (delegation)
+            zoneList.addEventListener('click', (e) => {
+                const item = e.target.closest('.zone-item');
+                if (!item) return;
+                const index = parseInt(item.dataset.index);
+
+                if (e.target.classList.contains('delete-zone-btn')) {
+                    deleteZone(index);
+                } else {
+                    selectZone(index);
+                }
+            });
+
+            zoneList.addEventListener('input', (e) => {
+                if (!e.target.classList.contains('zone-name-input')) return;
+                const index = parseInt(e.target.dataset.index);
+                const template = getCurrentTemplate();
+                if (template && template.zones[index]) {
+                    template.zones[index].name = e.target.value;
+                    saveTemplates();
+                }
+            });
+
+            btnAddZone.addEventListener('click', () => startDrawZone());
+            btnDeleteZone.addEventListener('click', () => {
+                const selected = document.querySelector('.zone-item.active');
+                if (selected) {
+                    deleteZone(parseInt(selected.dataset.index));
+                }
+            });
+
+            // Keyboard shortcut
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    stopDrawMode();
+                }
+                if (e.key === 'Delete' && !e.target.closest('input')) {
+                    const selected = document.querySelector('.zone-item.active');
+                    if (selected) {
+                        deleteZone(parseInt(selected.dataset.index));
+                    }
+                }
+            });
+
+            // Viewer click to deselect zones
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.zone-item') && !e.target.closest('.sidebar')) {
+                    document.querySelectorAll('.zone-item').forEach(el => el.classList.remove('active'));
+                }
+            });
+
+            // =========================================================
+            // DDV initialization
+            // =========================================================
+            Dynamsoft.DDV.Core.license = 'DLS2eyJvcmdhbml6YXRpb25JRCI6IjIwMDAwMSJ9';
+            Dynamsoft.DDV.Core.engineResourcePath = 'https://cdn.jsdelivr.net/npm/dynamsoft-document-viewer@latest/dist/engine';
+            Dynamsoft.DDV.Core.loadWasm();
+
+            await Dynamsoft.DDV.Core.init();
+
+            // Customize UiConfig to hide header, footer, and thumbnail
+            const uiConfig = Dynamsoft.DDV.getDefaultUiConfig("editViewer");
+            if (uiConfig && uiConfig.children) {
+                uiConfig.children = uiConfig.children.filter(child => {
+                    const cls = (child.className || '').toLowerCase();
+                    return !cls.includes('header') && !cls.includes('footer');
+                });
+                for (const child of uiConfig.children) {
+                    if (child.children && Array.isArray(child.children)) {
+                        child.children = child.children.filter(sub => {
+                            const cls = (sub.className || '').toLowerCase();
+                            return !cls.includes('thumbnail');
+                        });
+                    }
+                }
+            }
+
+            editViewer = new Dynamsoft.DDV.EditViewer({
+                container: 'viewer',
+                uiConfig,
+                viewerConfig: {
+                    enableLoadSourceByDrag: false,
+                },
+                annotationConfig: {
+                    enableContinuousDrawing: false,
+                    showOnTopWhenSelected: true,
+                }
+            });
+
+            // Create a document
+            currentDoc = Dynamsoft.DDV.documentManager.createDocument({ name: 'OCR Template' });
+            editViewer.openDocument(currentDoc);
+
+            editViewer.fitMode = 'width';
+
+            // =========================================================
+            // DDV Annotation event handlers
+            // =========================================================
+            Dynamsoft.DDV.annotationManager.on('annotationsAdded', (e) => {
+                if (!isDrawing) return;
+                // New annotation drawn by user
+                for (const uid of e.annotationUids) {
+                    addZoneFromAnnotation(uid);
+                }
+            });
+
+            Dynamsoft.DDV.annotationManager.on('annotationsModified', (e) => {
+                // Sync modified annotation coordinates back to zone data
+                const template = getCurrentTemplate();
+                if (!template) return;
+
+                for (const modified of e.modifiedAnnotations) {
+                    const zoneIdx = zoneAnnotationMap.get(modified.uid);
+                    if (zoneIdx === undefined || zoneIdx >= template.zones.length) continue;
+
+                    const newOpts = modified.newOptions;
+                    if (newOpts.x !== undefined) template.zones[zoneIdx].x = newOpts.x;
+                    if (newOpts.y !== undefined) template.zones[zoneIdx].y = newOpts.y;
+                    if (newOpts.width !== undefined) template.zones[zoneIdx].width = newOpts.width;
+                    if (newOpts.height !== undefined) template.zones[zoneIdx].height = newOpts.height;
+                }
+                saveTemplates();
+                renderZoneList();
+            });
+
+            Dynamsoft.DDV.annotationManager.on('annotationsDeleted', (e) => {
+                // Clean up zoneAnnotationMap for deleted annotations
+                for (const uid of e.annotationUids) {
+                    zoneAnnotationMap.delete(uid);
+                }
+            });
+
+            // Handle tool mode changes (DDV auto-switches to "pan" after drawing)
+            editViewer.on('toolModeChanged', (e) => {
+                if (isDrawing && e.newToolMode === 'pan') {
+                    // After drawing completes, switch to select mode
+                    isDrawing = false;
+                    modeIndicator.classList.remove('visible');
+                    setTimeout(() => {
+                        if (editViewer && !isDrawing) {
+                            editViewer.toolMode = 'annotation';
+                            editViewer.annotationMode = 'select';
+                        }
+                    }, 100);
+                }
+            });
+
+            // Handle page rendered to ensure annotations are properly displayed
+            editViewer.on('pageRendered', () => {
+                // Re-apply zone colors if needed
+                const template = getCurrentTemplate();
+                if (!template || !template.zones) return;
+                const pageUid = editViewer.getCurrentPageUid();
+                if (!pageUid) return;
+
+                const annotations = Dynamsoft.DDV.annotationManager.getAnnotationsByPage(pageUid);
+                for (const [annUid, zoneIdx] of zoneAnnotationMap) {
+                    const ann = annotations.find(a => a.uid === annUid);
+                    if (ann) {
+                        const color = getZoneColor(zoneIdx);
+                        ann.updateOptions({
+                            borderColor: color,
+                            background: color + '22'
+                        });
+                    }
+                }
+            });
+
+            // =========================================================
+            // Initial load
+            // =========================================================
+            loadTemplates();
+            refreshTemplateSelect();
+
+            if (templates.length > 0) {
+                await selectTemplate(0);
+            } else {
+                updateButtons();
+            }
+
+            console.log('OCR Template Editor ready');
+        })();
+    </script>
+</body>
+</html>
