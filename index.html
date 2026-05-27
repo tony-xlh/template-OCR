@@ -209,7 +209,11 @@
             Dynamsoft.DWT.AutoLoad = false;
             Dynamsoft.DWT.IfCheckCssFiles = false;
             Dynamsoft.DWT.Containers = [{ ContainerId: 'dwtcontrolContainer', Width: '100%', Height: '100%' }];
-            Dynamsoft.DWT.ProductKey = 't0201EQYAAFxJgSps9MNQ02mR3JyN57FRaiRQjM8Jh4ZOw/DoVIxEeN3uHES640VTiI8dAcABXv99LfbWEmwutvGlL9he4o9cy+fOiQ5Oae8Uau/kDk68chL5rTkeu222cesABGDaADmPwwlwChxzyYDZ7r13hghADZAKILU5cA0orkKDjzR46+s1ps82tOREB6e0d6YJ0sbJHZx45dQEcSOZr652ORKE05MTAagBUgT4f5FdEoRyADVAisCcZTEigPQ3AO8x/gA/RjeL';
+            var defaultLicense = localStorage.getItem('dwtLicense') || 'DLS2eyJvcmdhbml6YXRpb25JRCI6IjIwMDAwMSJ9';
+            var dwtLicense = window.prompt('Enter Dynamic Web TWAIN license key (leave blank for default):', defaultLicense);
+            if (dwtLicense) { localStorage.setItem('dwtLicense', dwtLicense); }
+            else { dwtLicense = defaultLicense; }
+            Dynamsoft.DWT.ProductKey = dwtLicense;
             Dynamsoft.DWT.ResourcesPath = "https://cdn.jsdelivr.net/npm/dwt/dist";
             Dynamsoft.DWT.ServiceInstallerLocation = "https://demo.dynamsoft.com/DWT/Resources/dist/";
             Dynamsoft.DWT.Load();

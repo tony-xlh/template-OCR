@@ -913,7 +913,11 @@
             // =========================================================
             // DDV initialization
             // =========================================================
-            Dynamsoft.DDV.Core.license = 'DLS2eyJvcmdhbml6YXRpb25JRCI6IjIwMDAwMSJ9';
+            var defaultLicense = localStorage.getItem('ddvLicense') || 'DLS2eyJvcmdhbml6YXRpb25JRCI6IjIwMDAwMSJ9';
+            var ddvLicense = window.prompt('Enter Dynamsoft Document Viewer license key (leave blank for default):', defaultLicense);
+            if (ddvLicense) { localStorage.setItem('ddvLicense', ddvLicense); }
+            else { ddvLicense = defaultLicense; }
+            Dynamsoft.DDV.Core.license = ddvLicense;
             Dynamsoft.DDV.Core.engineResourcePath = 'https://cdn.jsdelivr.net/npm/dynamsoft-document-viewer@latest/dist/engine';
             Dynamsoft.DDV.Core.loadWasm();
 
