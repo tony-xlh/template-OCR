@@ -177,6 +177,7 @@
                             </select>
                             <button onclick="window.open('ocr-template-editor.html','_blank')" title="Open Template Editor" style="padding:5px 8px;font-size:18px;line-height:1;cursor:pointer;border:1px solid #ced4da;border-radius:4px;background:#fff;flex-shrink:0;">&#x1F527;</button>
                             <img class="sample-thumb" id="sampleThumb" src="" alt="" style="display:none;" />
+                            <iframe class="sample-thumb" id="samplePdfThumb" src="" style="display:none;width:90px;height:68px;border:1px solid #dee2e6;border-radius:2px;"></iframe>
                             <div class="sample-thumb placeholder" id="sampleThumbPlaceholder">N/A</div>
                         </div>
                         <div class="template-info" id="templateInfo" style="display:none;">
@@ -311,6 +312,17 @@
                     img.onerror = function () { reject(new Error('Failed to load image')); };
                     img.src = dataUrl;
                 });
+            }
+
+            function dataURLToBlob(dataUrl) {
+                var parts = dataUrl.split(',');
+                var mime = parts[0].match(/:(.*?);/)[1];
+                var bytes = atob(parts[1]);
+                var arr = new Uint8Array(bytes.length);
+                for (var i = 0; i < bytes.length; i++) {
+                    arr[i] = bytes.charCodeAt(i);
+                }
+                return new Blob([arr], { type: mime });
             }
 
             function createPageThumbnail(dataUrl, maxW, maxH) {
@@ -499,12 +511,23 @@
                 document.getElementById('infoZones').textContent = 'Zones: ' + (template.zones ? template.zones.length : 0);
                 info.style.display = 'block';
 
-                if (template.sampleImage && template.sampleImage.indexOf('data:application/pdf') !== 0) {
+                var pdfThumb = document.getElementById('samplePdfThumb');
+
+                if (template.sampleImage && template.sampleImage.indexOf('data:application/pdf') === 0) {
+                    var blob = dataURLToBlob(template.sampleImage);
+                    var blobUrl = URL.createObjectURL(blob);
+                    pdfThumb.src = blobUrl;
+                    pdfThumb.style.display = 'block';
+                    thumb.style.display = 'none';
+                    thumbPh.style.display = 'none';
+                } else if (template.sampleImage) {
                     thumb.src = template.sampleImage;
                     thumb.style.display = 'block';
+                    pdfThumb.style.display = 'none';
                     thumbPh.style.display = 'none';
                 } else {
                     thumb.style.display = 'none';
+                    pdfThumb.style.display = 'none';
                     thumbPh.style.display = 'flex';
                 }
             }
