@@ -161,6 +161,7 @@
             <input type="button" value="Scan" onclick="AcquireImage();" />
             <input type="button" value="Load File" onclick="LoadFile();" />
             <input type="button" value="OCR" onclick="performOCR();" style="background:#fe8e14;color:#fff;font-weight:700;border-color:#fe8e14;" />
+            <input type="button" value="Load Samples" onclick="loadSamples();" />
             <span style="color:#888;font-size:12px;margin-left:auto;">OCR Template Viewer</span>
         </div>
         <div class="main-area">
@@ -505,6 +506,51 @@
                 } else {
                     thumb.style.display = 'none';
                     thumbPh.style.display = 'flex';
+                }
+            }
+
+            // ========== Load Samples ==========
+            async function loadSamples() {
+                if (!DWTObject) {
+                    alert('Web TWAIN is not ready yet. Please wait.');
+                    return;
+                }
+
+                try {
+                    var response = await fetch('ocr_templates.json');
+                    var templates = await response.json();
+
+                    await localforage.setItem('ocr_templates', templates);
+                    await populateTemplateSelect();
+
+                    if (DWTObject.HowManyImagesInBuffer > 0) {
+                        DWTObject.RemoveAllImages();
+                    }
+
+                    var loadedCount = 0;
+                    for (var i = 0; i < templates.length; i++) {
+                        var t = templates[i];
+                        if (t.sampleImage) {
+                            try {
+                                var base64 = t.sampleImage.split(',')[1];
+                                var name = t.templateName || ('Sample ' + (i + 1));
+                                await new Promise(function (resolve, reject) {
+                                    DWTObject.LoadImageFromBase64Binary(
+                                        base64,
+                                        name,
+                                        function () { loadedCount++; resolve(); },
+                                        function (code, msg) { reject(new Error(msg)); }
+                                    );
+                                });
+                            } catch (e) {
+                                console.warn('Failed to load sample image for: ' + t.templateName, e);
+                            }
+                        }
+                    }
+
+                    alert('Loaded ' + templates.length + ' templates' + (loadedCount > 0 ? ' and ' + loadedCount + ' sample image(s) into the viewer.' : '.'));
+                } catch (err) {
+                    alert('Failed to load samples: ' + (err.message || String(err)));
                 }
             }
 
