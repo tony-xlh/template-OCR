@@ -1,7 +1,6 @@
 <html>
     <head>
        <script src="https://cdn.jsdelivr.net/npm/dwt/dist/dynamsoft.webtwain.min.js"></script>
-       <script src="https://cdn.jsdelivr.net/npm/localforage/dist/localforage.min.js"></script>
        <style>
            html, body {
                margin: 0;
@@ -392,8 +391,9 @@
             function performOCR() {
                 var select = document.getElementById('templateSelect');
                 var index = parseInt(select.value);
+                var templates = loadTemplates();
 
-                if (isNaN(index) || index < 0) {
+                if (isNaN(index) || index < 0 || index >= templates.length) {
                     alert('Please select a template first.');
                     return;
                 }
@@ -403,33 +403,26 @@
                     return;
                 }
 
+                var template = templates[index];
+                if (!template.zones || template.zones.length === 0) {
+                    alert('Selected template has no zones defined.');
+                    return;
+                }
+
                 var currentIndex = DWTObject.CurrentImageIndexInBuffer;
                 var status = document.getElementById('ocrStatus');
                 var section = document.getElementById('ocrResultsSection');
                 section.classList.add('visible');
                 status.textContent = 'Running OCR...';
 
-                loadTemplates()
-                    .then(function (templates) {
-                        if (index >= templates.length) {
-                            throw new Error('Selected template not found.');
-                        }
-                        var template = templates[index];
-                        if (!template.zones || template.zones.length === 0) {
-                            throw new Error('Selected template has no zones defined.');
-                        }
-                        return template;
-                    })
-                    .then(function (template) {
-                        return getImageDataUrl(currentIndex).then(function (dataUrl) {
-                            return loadImage(dataUrl).then(function (img) {
-                                return { dataUrl: dataUrl, img: img, template: template };
-                            });
+                getImageDataUrl(currentIndex)
+                    .then(function (dataUrl) {
+                        return loadImage(dataUrl).then(function (img) {
+                            return { dataUrl: dataUrl, img: img };
                         });
                     })
                     .then(function (imageInfo) {
                         var img = imageInfo.img;
-                        var template = imageInfo.template;
                         var rects = template.zones.map(function (zone) {
                             return {
                                 left: Math.round(zone.x * img.naturalWidth),
@@ -444,13 +437,13 @@
                             { rects: rects }
                         ).then(function (ocrResult) {
                             console.log(ocrResult);
-                            return { dataUrl: imageInfo.dataUrl, ocrResult: ocrResult, rects: rects, template: template };
+                            return { dataUrl: imageInfo.dataUrl, ocrResult: ocrResult, rects: rects };
                         });
                     })
                     .then(function (result) {
-                        var zoneResults = matchBlocksToZones(result.ocrResult, result.template.zones, result.rects);
+                        var zoneResults = matchBlocksToZones(result.ocrResult, template.zones, result.rects);
                         return createPageThumbnail(result.dataUrl, 90, 68).then(function (thumbDataUrl) {
-                            addOCRResultRow(zoneResults, thumbDataUrl, result.template);
+                            addOCRResultRow(zoneResults, thumbDataUrl, template);
                         });
                     })
                     .catch(function (err) {
@@ -462,34 +455,35 @@
 
             // ========== Template loading ==========
             function loadTemplates() {
-                return localforage.getItem('ocr_templates').then(function (data) {
-                    return data || [];
-                }).catch(function () {
+                try {
+                    var raw = localStorage.getItem('ocr_templates');
+                    return raw ? JSON.parse(raw) : [];
+                } catch (e) {
                     return [];
-                });
+                }
             }
 
             function populateTemplateSelect() {
-                return loadTemplates().then(function (templates) {
-                    var select = document.getElementById('templateSelect');
-                    select.innerHTML = '<option value="">-- Choose a template --</option>';
-                    for (var i = 0; i < templates.length; i++) {
-                        var opt = document.createElement('option');
-                        opt.value = i;
-                        opt.textContent = templates[i].templateName || ('Template ' + (i + 1));
-                        select.appendChild(opt);
-                    }
-                });
+                var templates = loadTemplates();
+                var select = document.getElementById('templateSelect');
+                select.innerHTML = '<option value="">-- Choose a template --</option>';
+                for (var i = 0; i < templates.length; i++) {
+                    var opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = templates[i].templateName || ('Template ' + (i + 1));
+                    select.appendChild(opt);
+                }
             }
 
             function onTemplateSelect() {
                 var select = document.getElementById('templateSelect');
                 var index = parseInt(select.value);
+                var templates = loadTemplates();
                 var thumb = document.getElementById('sampleThumb');
                 var thumbPh = document.getElementById('sampleThumbPlaceholder');
                 var info = document.getElementById('templateInfo');
 
-                if (isNaN(index) || index < 0) {
+                if (isNaN(index) || index < 0 || index >= templates.length) {
                     thumb.style.display = 'none';
                     thumbPh.style.display = 'flex';
                     thumb.src = '';
@@ -497,36 +491,25 @@
                     return;
                 }
 
-                loadTemplates().then(function (templates) {
-                    if (index >= templates.length) {
-                        thumb.style.display = 'none';
-                        thumbPh.style.display = 'flex';
-                        thumb.src = '';
-                        info.style.display = 'none';
-                        return;
-                    }
+                var template = templates[index];
 
-                    var template = templates[index];
+                document.getElementById('infoName').textContent = 'Name: ' + (template.templateName || 'Unnamed');
+                document.getElementById('infoZones').textContent = 'Zones: ' + (template.zones ? template.zones.length : 0);
+                info.style.display = 'block';
 
-                    document.getElementById('infoName').textContent = 'Name: ' + (template.templateName || 'Unnamed');
-                    document.getElementById('infoZones').textContent = 'Zones: ' + (template.zones ? template.zones.length : 0);
-                    info.style.display = 'block';
-
-                    if (template.sampleImage && template.sampleImage.indexOf('data:application/pdf') !== 0) {
-                        thumb.src = template.sampleImage;
-                        thumb.style.display = 'block';
-                        thumbPh.style.display = 'none';
-                    } else {
-                        thumb.style.display = 'none';
-                        thumbPh.style.display = 'flex';
-                    }
-                });
+                if (template.sampleImage && template.sampleImage.indexOf('data:application/pdf') !== 0) {
+                    thumb.src = template.sampleImage;
+                    thumb.style.display = 'block';
+                    thumbPh.style.display = 'none';
+                } else {
+                    thumb.style.display = 'none';
+                    thumbPh.style.display = 'flex';
+                }
             }
 
             // Initialize template panel
-            populateTemplateSelect().then(function () {
-                document.getElementById('templateSelect').addEventListener('change', onTemplateSelect);
-            });
+            populateTemplateSelect();
+            document.getElementById('templateSelect').addEventListener('change', onTemplateSelect);
         </script>
     </body>
 </html>

@@ -6,7 +6,6 @@
     <title>OCR Template Editor</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dynamsoft-document-viewer@latest/dist/ddv.css">
     <script src="https://cdn.jsdelivr.net/npm/dynamsoft-document-viewer@latest/dist/ddv.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/localforage/dist/localforage.min.js"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -217,21 +216,17 @@
             // =========================================================
             // Persistence
             // =========================================================
-            async function loadTemplates() {
+            function loadTemplates() {
                 try {
-                    const data = await localforage.getItem(STORAGE_KEY);
-                    templates = data || [];
+                    const raw = localStorage.getItem(STORAGE_KEY);
+                    templates = raw ? JSON.parse(raw) : [];
                 } catch (e) {
                     templates = [];
                 }
             }
 
-            async function saveTemplates() {
-                try {
-                    await localforage.setItem(STORAGE_KEY, templates);
-                } catch (e) {
-                    console.error('Failed to save templates:', e);
-                }
+            function saveTemplates() {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(templates, null, 2));
                 refreshTemplateSelect();
             }
 
@@ -461,7 +456,7 @@
                     zones: []
                 };
                 templates.push(template);
-                await saveTemplates();
+                saveTemplates();
                 await selectTemplate(templates.length - 1);
             }
 
@@ -479,7 +474,7 @@
                 } else if (currentTemplateIndex > index) {
                     currentTemplateIndex--;
                 }
-                await saveTemplates();
+                saveTemplates();
                 renderZoneList();
                 updateButtons();
             }
@@ -487,7 +482,7 @@
             async function renameTemplate(index, newName) {
                 if (index < 0 || index >= templates.length) return;
                 templates[index].templateName = newName;
-                await saveTemplates();
+                saveTemplates();
             }
 
             // =========================================================
@@ -630,7 +625,7 @@
                     opacity: 0.85
                 });
 
-                await saveTemplates();
+                saveTemplates();
                 renderZoneList();
                 stopDrawMode();
             }
@@ -657,7 +652,7 @@
                 }
                 zoneAnnotationMap = newMap;
 
-                await saveTemplates();
+                saveTemplates();
                 renderZoneList();
             }
 
@@ -676,9 +671,9 @@
             // =========================================================
             // Import / Export
             // =========================================================
-            async function exportTemplates() {
+            function exportTemplates() {
                 syncAnnotationsToTemplate();
-                await saveTemplates();
+                saveTemplates();
                 const json = JSON.stringify(templates, null, 2);
                 const blob = new Blob([json], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
@@ -708,7 +703,7 @@
                                 templates.push(t);
                             }
                         }
-                        await saveTemplates();
+                        saveTemplates();
                         await selectTemplate(0);
                         alert('Import successful!');
                     } catch (err) {
@@ -835,7 +830,7 @@
                 // Store base64 for template persistence
                 const base64 = await blobToBase64(file);
                 template.sampleImage = base64;
-                await saveTemplates();
+                saveTemplates();
                 renderZoneList();
                 updateButtons();
 
@@ -856,13 +851,13 @@
                 }
             });
 
-            zoneList.addEventListener('input', async (e) => {
+            zoneList.addEventListener('input', (e) => {
                 if (!e.target.classList.contains('zone-name-input')) return;
                 const index = parseInt(e.target.dataset.index);
                 const template = getCurrentTemplate();
                 if (template && template.zones[index]) {
                     template.zones[index].name = e.target.value;
-                    await saveTemplates();
+                    saveTemplates();
                 }
             });
 
@@ -949,7 +944,7 @@
                 }
             });
 
-            Dynamsoft.DDV.annotationManager.on('annotationsModified', async (e) => {
+            Dynamsoft.DDV.annotationManager.on('annotationsModified', (e) => {
                 // Sync modified annotation coordinates back to zone data
                 const template = getCurrentTemplate();
                 if (!template) return;
@@ -971,11 +966,11 @@
                         }
                     }
                 }
-                await saveTemplates();
+                saveTemplates();
                 renderZoneList();
             });
 
-            Dynamsoft.DDV.annotationManager.on('annotationsDeleted', async (e) => {
+            Dynamsoft.DDV.annotationManager.on('annotationsDeleted', (e) => {
                 const template = getCurrentTemplate();
                 if (!template) return;
 
@@ -1006,7 +1001,7 @@
                 }
                 zoneAnnotationMap = newMap;
 
-                await saveTemplates();
+                saveTemplates();
                 renderZoneList();
             });
 
@@ -1049,7 +1044,7 @@
             // =========================================================
             // Initial load
             // =========================================================
-            await loadTemplates();
+            loadTemplates();
             refreshTemplateSelect();
 
             if (templates.length > 0) {
