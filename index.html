@@ -7,15 +7,126 @@
                padding: 0;
                height: 100%;
                overflow: hidden;
+               font-family: 'Segoe UI', system-ui, sans-serif;
+               background: #f0f2f5;
            }
            #toolbar {
-               padding: 8px;
+               padding: 8px 12px;
                background: #f5f5f5;
                border-bottom: 1px solid #ddd;
+               display: flex;
+               align-items: center;
+               gap: 8px;
+               flex-shrink: 0;
+           }
+           #toolbar input[type="button"] {
+               padding: 6px 14px;
+               border: 1px solid #ccc;
+               border-radius: 4px;
+               background: #fff;
+               cursor: pointer;
+               font-size: 13px;
+           }
+           #toolbar input[type="button"]:hover {
+               background: #e9ecef;
+           }
+           .main-area {
+               display: flex;
+               height: calc(100% - 45px);
            }
            #dwtcontrolContainer {
+               flex: 1;
+               min-width: 0;
+               height: 100%;
+           }
+           .template-panel {
+               width: 340px;
+               min-width: 340px;
+               height: 100%;
+               background: #fff;
+               border-left: 1px solid #dee2e6;
+               display: flex;
+               flex-direction: column;
+               overflow: hidden;
+           }
+           .panel-header {
+               padding: 12px 16px;
+               background: #fe8e14;
+               color: #fff;
+               font-size: 15px;
+               font-weight: 700;
+               flex-shrink: 0;
+           }
+           .panel-content {
+               flex: 1;
+               overflow-y: auto;
+               padding: 12px;
+               display: flex;
+               flex-direction: column;
+               gap: 12px;
+           }
+           .section {
+               background: #fff;
+               border-radius: 8px;
+               padding: 12px;
+               border: 1px solid #e9ecef;
+           }
+           .section-title {
+               font-size: 12px;
+               text-transform: uppercase;
+               letter-spacing: 1px;
+               color: #6c757d;
+               margin-bottom: 8px;
+           }
+           select {
                width: 100%;
-               height: calc(100% - 45px);
+               padding: 6px 10px;
+               border: 1px solid #ced4da;
+               border-radius: 4px;
+               font-size: 13px;
+               outline: none;
+               background: #fff;
+               color: #212529;
+           }
+           select:focus {
+               border-color: #fe8e14;
+           }
+           .sample-preview {
+               text-align: center;
+               min-height: 120px;
+               display: flex;
+               align-items: center;
+               justify-content: center;
+               background: #f8f9fa;
+               border-radius: 6px;
+               border: 2px dashed #dee2e6;
+               overflow: hidden;
+           }
+           .sample-preview img {
+               max-width: 100%;
+               max-height: 400px;
+               object-fit: contain;
+               display: block;
+           }
+           .sample-preview .placeholder {
+               color: #adb5bd;
+               font-size: 13px;
+               padding: 20px;
+           }
+           .template-info {
+               font-size: 12px;
+               color: #6c757d;
+               margin-top: 6px;
+           }
+           .template-info span {
+               display: block;
+               line-height: 1.6;
+           }
+           .no-template {
+               color: #adb5bd;
+               font-size: 13px;
+               text-align: center;
+               padding: 30px 0;
            }
        </style>
     </head>
@@ -24,8 +135,32 @@
         <div id="toolbar">
             <input type="button" value="Scan" onclick="AcquireImage();" />
             <input type="button" value="Load File" onclick="LoadFile();" />
+            <span style="color:#888;font-size:12px;margin-left:auto;">OCR Template Viewer</span>
         </div>
-        <div id="dwtcontrolContainer"></div>
+        <div class="main-area">
+            <div id="dwtcontrolContainer"></div>
+            <div class="template-panel">
+                <div class="panel-header">OCR Template</div>
+                <div class="panel-content">
+                    <div class="section">
+                        <div class="section-title">Select Template</div>
+                        <select id="templateSelect">
+                            <option value="">-- Choose a template --</option>
+                        </select>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">Sample Image</div>
+                        <div class="sample-preview" id="samplePreview">
+                            <div class="placeholder">Select a template to view its sample image</div>
+                        </div>
+                        <div class="template-info" id="templateInfo" style="display:none;">
+                            <span id="infoName"></span>
+                            <span id="infoZones"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         <script type="text/javascript">
             Dynamsoft.DWT.AutoLoad = false;
             Dynamsoft.DWT.IfCheckCssFiles = false;
@@ -34,7 +169,7 @@
             Dynamsoft.DWT.ResourcesPath = "https://cdn.jsdelivr.net/npm/dwt/dist";
             Dynamsoft.DWT.ServiceInstallerLocation = "https://demo.dynamsoft.com/DWT/Resources/dist/";
             Dynamsoft.DWT.Load();
-        
+
             var DWTObject;
 
             Dynamsoft.DWT.RegisterEvent("OnWebTwainReady", function () {
@@ -76,6 +211,87 @@
                     );
                 }
             }
+
+            // ========== Helpers ==========
+            function base64ToBlob(dataUrl) {
+                var parts = dataUrl.split(',');
+                var header = parts[0];
+                var mimeMatch = header.match(/data:([^;]*)/);
+                var mimeType = mimeMatch ? mimeMatch[1] : 'application/pdf';
+                var base64 = parts[1];
+                var byteChars = atob(base64);
+                var byteArrays = [];
+                for (var offset = 0; offset < byteChars.length; offset += 512) {
+                    var slice = byteChars.slice(offset, offset + 512);
+                    var byteNumbers = new Array(slice.length);
+                    for (var i = 0; i < slice.length; i++) {
+                        byteNumbers[i] = slice.charCodeAt(i);
+                    }
+                    byteArrays.push(new Uint8Array(byteNumbers));
+                }
+                return new Blob(byteArrays, { type: mimeType });
+            }
+
+            // ========== Template loading ==========
+            function loadTemplates() {
+                try {
+                    var raw = localStorage.getItem('ocr_templates');
+                    return raw ? JSON.parse(raw) : [];
+                } catch (e) {
+                    return [];
+                }
+            }
+
+            function populateTemplateSelect() {
+                var templates = loadTemplates();
+                var select = document.getElementById('templateSelect');
+                select.innerHTML = '<option value="">-- Choose a template --</option>';
+                for (var i = 0; i < templates.length; i++) {
+                    var opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = templates[i].templateName || ('Template ' + (i + 1));
+                    select.appendChild(opt);
+                }
+            }
+
+            function onTemplateSelect() {
+                var select = document.getElementById('templateSelect');
+                var index = parseInt(select.value);
+                var templates = loadTemplates();
+                var preview = document.getElementById('samplePreview');
+                var info = document.getElementById('templateInfo');
+
+                if (isNaN(index) || index < 0 || index >= templates.length) {
+                    preview.innerHTML = '<div class="placeholder">Select a template to view its sample image</div>';
+                    info.style.display = 'none';
+                    return;
+                }
+
+                var template = templates[index];
+
+                // Show template info
+                document.getElementById('infoName').textContent = 'Name: ' + (template.templateName || 'Unnamed');
+                document.getElementById('infoZones').textContent = 'Zones: ' + (template.zones ? template.zones.length : 0);
+                info.style.display = 'block';
+
+                // Show sample image
+                if (template.sampleImage) {
+                    var isPdf = template.sampleImage.indexOf('data:application/pdf') === 0;
+                    if (isPdf) {
+                        var blob = base64ToBlob(template.sampleImage);
+                        var url = URL.createObjectURL(blob);
+                        preview.innerHTML = '<iframe src="' + url + '" style="width:100%;height:100px;border:none;"></iframe>';
+                    } else {
+                        preview.innerHTML = '<img src="' + template.sampleImage + '" alt="Sample image" />';
+                    }
+                } else {
+                    preview.innerHTML = '<div class="placeholder">No sample image for this template</div>';
+                }
+            }
+
+            // Initialize template panel
+            populateTemplateSelect();
+            document.getElementById('templateSelect').addEventListener('change', onTemplateSelect);
         </script>
     </body>
 </html>
