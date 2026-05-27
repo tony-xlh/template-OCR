@@ -39,9 +39,9 @@
                min-width: 0;
                height: 100%;
            }
-           .template-panel {
-               width: 340px;
-               min-width: 340px;
+           .right-panel {
+               width: 50%;
+               min-width: 420px;
                height: 100%;
                background: #fff;
                border-left: 1px solid #dee2e6;
@@ -50,10 +50,10 @@
                overflow: hidden;
            }
            .panel-header {
-               padding: 12px 16px;
+               padding: 10px 16px;
                background: #fe8e14;
                color: #fff;
-               font-size: 15px;
+               font-size: 14px;
                font-weight: 700;
                flex-shrink: 0;
            }
@@ -63,24 +63,24 @@
                padding: 12px;
                display: flex;
                flex-direction: column;
-               gap: 12px;
+               gap: 10px;
            }
            .section {
                background: #fff;
                border-radius: 8px;
-               padding: 12px;
+               padding: 10px 12px;
                border: 1px solid #e9ecef;
            }
            .section-title {
-               font-size: 12px;
+               font-size: 11px;
                text-transform: uppercase;
                letter-spacing: 1px;
                color: #6c757d;
-               margin-bottom: 8px;
+               margin-bottom: 6px;
            }
            select {
                width: 100%;
-               padding: 6px 10px;
+               padding: 5px 8px;
                border: 1px solid #ced4da;
                border-radius: 4px;
                font-size: 13px;
@@ -91,60 +91,67 @@
            select:focus {
                border-color: #fe8e14;
            }
-           .sample-preview {
-               text-align: center;
-               min-height: 120px;
+           .template-compact {
+               display: flex;
+               gap: 8px;
+               align-items: center;
+           }
+           .template-compact select {
+               flex: 1;
+           }
+           .template-compact .sample-thumb {
+               width: 48px;
+               height: 36px;
+               border: 1px solid #dee2e6;
+               border-radius: 3px;
+               object-fit: contain;
+               background: #f8f9fa;
+               flex-shrink: 0;
+           }
+           .template-compact .sample-thumb.placeholder {
                display: flex;
                align-items: center;
                justify-content: center;
-               background: #f8f9fa;
-               border-radius: 6px;
-               border: 2px dashed #dee2e6;
-               overflow: hidden;
-           }
-           .sample-preview img {
-               max-width: 100%;
-               max-height: 400px;
-               object-fit: contain;
-               display: block;
-           }
-           .sample-preview .placeholder {
+               font-size: 9px;
                color: #adb5bd;
-               font-size: 13px;
-               padding: 20px;
            }
            .template-info {
-               font-size: 12px;
+               font-size: 11px;
                color: #6c757d;
-               margin-top: 6px;
+               margin-top: 4px;
            }
            .template-info span {
-               display: block;
-               line-height: 1.6;
+               margin-right: 12px;
            }
-           .no-template {
-               color: #adb5bd;
-               font-size: 13px;
-               text-align: center;
-               padding: 30px 0;
+           #ocrResultsSection {
+               flex: 1;
+               display: none;
+               flex-direction: column;
+               overflow: hidden;
            }
-           #ocrResultsSection { display: none; }
-           #ocrResultsSection.visible { display: block; }
-           #ocrStatus { font-size: 12px; color: #fe8e14; text-align: center; padding: 8px; }
+           #ocrResultsSection.visible {
+               display: flex;
+           }
+           #ocrStatus { font-size: 11px; color: #fe8e14; padding: 4px 0; flex-shrink: 0; }
+           #ocrTableWrapper {
+               flex: 1;
+               overflow: auto;
+               margin-top: 4px;
+           }
            .results-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-           .results-table th { background: #f0f2f5; padding: 6px 8px; text-align: left; font-size: 11px; text-transform: uppercase; color: #6c757d; border-bottom: 2px solid #dee2e6; position: sticky; top: 0; }
-           .results-table td { padding: 6px 8px; border-bottom: 1px solid #e9ecef; vertical-align: top; }
+           .results-table th { background: #f0f2f5; padding: 5px 8px; text-align: left; font-size: 10px; text-transform: uppercase; color: #6c757d; border-bottom: 2px solid #dee2e6; position: sticky; top: 0; z-index: 1; }
+           .results-table td { padding: 5px 8px; border-bottom: 1px solid #e9ecef; vertical-align: top; }
+           .results-table tr:hover td { background: #f8f9fa; }
            .results-table .idx-cell { width: 28px; text-align: center; color: #6c757d; vertical-align: middle; }
            .results-table .fields-cell { color: #212529; word-break: break-word; line-height: 1.6; }
            .results-table .fields-cell .kv-pair { display: block; }
            .results-table .fields-cell .kv-key { font-weight: 600; }
            .results-table .fields-cell .kv-value { color: #495057; }
-           .results-table .thumb-cell { width: 90px; text-align: center; vertical-align: middle; }
-           .results-table .thumb-cell img { max-width: 80px; max-height: 60px; border: 1px solid #dee2e6; border-radius: 2px; display: block; margin: 0 auto; }
-           .results-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-           .results-header span { font-size: 12px; color: #6c757d; }
+           .results-table .thumb-cell { width: 100px; text-align: center; vertical-align: middle; }
+           .results-table .thumb-cell img { max-width: 90px; max-height: 68px; border: 1px solid #dee2e6; border-radius: 2px; display: block; margin: 0 auto; }
+           .results-header { display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+           .results-header .section-title { margin-bottom: 0; }
            .results-header button { padding: 2px 8px; font-size: 11px; border: 1px solid #ccc; border-radius: 3px; background: #fff; cursor: pointer; }
-           #ocrTableWrapper { max-height: 300px; overflow-y: auto; }
        </style>
     </head>
 
@@ -157,19 +164,17 @@
         </div>
         <div class="main-area">
             <div id="dwtcontrolContainer"></div>
-            <div class="template-panel">
-                <div class="panel-header">OCR Template</div>
+            <div class="right-panel">
+                <div class="panel-header">Template &amp; OCR</div>
                 <div class="panel-content">
                     <div class="section">
                         <div class="section-title">Select Template</div>
-                        <select id="templateSelect">
-                            <option value="">-- Choose a template --</option>
-                        </select>
-                    </div>
-                    <div class="section">
-                        <div class="section-title">Sample Image</div>
-                        <div class="sample-preview" id="samplePreview">
-                            <div class="placeholder">Select a template to view its sample image</div>
+                        <div class="template-compact">
+                            <select id="templateSelect">
+                                <option value="">-- Choose a template --</option>
+                            </select>
+                            <img class="sample-thumb" id="sampleThumb" src="" alt="" style="display:none;" />
+                            <div class="sample-thumb placeholder" id="sampleThumbPlaceholder">N/A</div>
                         </div>
                         <div class="template-info" id="templateInfo" style="display:none;">
                             <span id="infoName"></span>
@@ -178,10 +183,12 @@
                     </div>
                     <div class="section" id="ocrResultsSection">
                         <div class="results-header">
-                            <span class="section-title" style="margin-bottom:0;">OCR Results</span>
-                            <button id="btnClearResults" onclick="clearOCRResults();">Clear</button>
+                            <span class="section-title">OCR Results</span>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <span id="ocrStatus"></span>
+                                <button id="btnClearResults" onclick="clearOCRResults();">Clear</button>
+                            </div>
                         </div>
-                        <div id="ocrStatus"></div>
                         <div id="ocrTableWrapper">
                             <table class="results-table" id="resultsTable">
                                 <thead><tr><th class="idx-cell">#</th><th>Fields</th><th class="thumb-cell">Thumb</th></tr></thead>
@@ -434,7 +441,7 @@
                     })
                     .then(function (result) {
                         var zoneResults = matchBlocksToZones(result.ocrResult, template.zones, result.rects);
-                        return createPageThumbnail(result.dataUrl, 80, 60).then(function (thumbDataUrl) {
+                        return createPageThumbnail(result.dataUrl, 90, 68).then(function (thumbDataUrl) {
                             addOCRResultRow(zoneResults, thumbDataUrl, template);
                         });
                     })
@@ -471,34 +478,31 @@
                 var select = document.getElementById('templateSelect');
                 var index = parseInt(select.value);
                 var templates = loadTemplates();
-                var preview = document.getElementById('samplePreview');
+                var thumb = document.getElementById('sampleThumb');
+                var thumbPh = document.getElementById('sampleThumbPlaceholder');
                 var info = document.getElementById('templateInfo');
 
                 if (isNaN(index) || index < 0 || index >= templates.length) {
-                    preview.innerHTML = '<div class="placeholder">Select a template to view its sample image</div>';
+                    thumb.style.display = 'none';
+                    thumbPh.style.display = 'flex';
+                    thumb.src = '';
                     info.style.display = 'none';
                     return;
                 }
 
                 var template = templates[index];
 
-                // Show template info
                 document.getElementById('infoName').textContent = 'Name: ' + (template.templateName || 'Unnamed');
                 document.getElementById('infoZones').textContent = 'Zones: ' + (template.zones ? template.zones.length : 0);
                 info.style.display = 'block';
 
-                // Show sample image
-                if (template.sampleImage) {
-                    var isPdf = template.sampleImage.indexOf('data:application/pdf') === 0;
-                    if (isPdf) {
-                        var blob = base64ToBlob(template.sampleImage);
-                        var url = URL.createObjectURL(blob);
-                        preview.innerHTML = '<iframe src="' + url + '" style="width:100%;height:100px;border:none;"></iframe>';
-                    } else {
-                        preview.innerHTML = '<img src="' + template.sampleImage + '" alt="Sample image" />';
-                    }
+                if (template.sampleImage && template.sampleImage.indexOf('data:application/pdf') !== 0) {
+                    thumb.src = template.sampleImage;
+                    thumb.style.display = 'block';
+                    thumbPh.style.display = 'none';
                 } else {
-                    preview.innerHTML = '<div class="placeholder">No sample image for this template</div>';
+                    thumb.style.display = 'none';
+                    thumbPh.style.display = 'flex';
                 }
             }
 
