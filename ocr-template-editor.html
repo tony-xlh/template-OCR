@@ -279,6 +279,36 @@
                 return ZONE_COLORS[index % ZONE_COLORS.length];
             }
 
+            function getPageDimensions() {
+                if (!currentDoc || !editViewer) return null;
+                const pageUid = editViewer.getCurrentPageUid();
+                if (!pageUid) return null;
+                const pageData = currentDoc.getPageData(pageUid);
+                return { width: pageData.mediaBox.width, height: pageData.mediaBox.height };
+            }
+
+            function percentToAbsolute(zone) {
+                const dims = getPageDimensions();
+                if (!dims) return { x: zone.x, y: zone.y, width: zone.width, height: zone.height };
+                return {
+                    x: zone.x * dims.width / 100,
+                    y: zone.y * dims.height / 100,
+                    width: zone.width * dims.width / 100,
+                    height: zone.height * dims.height / 100
+                };
+            }
+
+            function absoluteToPercent(zone) {
+                const dims = getPageDimensions();
+                if (!dims) return { x: zone.x, y: zone.y, width: zone.width, height: zone.height };
+                return {
+                    x: zone.x / dims.width * 100,
+                    y: zone.y / dims.height * 100,
+                    width: zone.width / dims.width * 100,
+                    height: zone.height / dims.height * 100
+                };
+            }
+
             function getImageBase64(template) {
                 if (!template || !template.sampleImage) return null;
                 return template.sampleImage;
@@ -379,11 +409,12 @@
                     if (pageUid && template.zones && template.zones.length > 0) {
                         for (let i = 0; i < template.zones.length; i++) {
                             const zone = template.zones[i];
+                            const abs = percentToAbsolute(zone);
                             const rect = Dynamsoft.DDV.annotationManager.createAnnotation(pageUid, 'rectangle', {
-                                x: zone.x,
-                                y: zone.y,
-                                width: zone.width,
-                                height: zone.height,
+                                x: abs.x,
+                                y: abs.y,
+                                width: abs.width,
+                                height: abs.height,
                                 borderColor: getZoneColor(i),
                                 borderWidth: 2,
                                 background: getZoneColor(i) + '22',
@@ -411,10 +442,10 @@
                     const ann = annotations.find(a => a.uid === annUid);
                     if (ann) {
                         const opts = ann.getOptions();
+                        const pct = absoluteToPercent({ x: opts.x, y: opts.y, width: opts.width, height: opts.height });
                         zoneMap.set(zoneIdx, {
                             name: template.zones[zoneIdx]?.name || '',
-                            x: opts.x, y: opts.y,
-                            width: opts.width, height: opts.height
+                            ...pct
                         });
                     }
                 }
@@ -584,10 +615,7 @@
 
                 const zone = {
                     name: name || `Zone ${template.zones.length + 1}`,
-                    x: opts.x,
-                    y: opts.y,
-                    width: opts.width,
-                    height: opts.height
+                    ...absoluteToPercent({ x: opts.x, y: opts.y, width: opts.width, height: opts.height })
                 };
 
                 template.zones.push(zone);
@@ -790,11 +818,12 @@
                 if (pageUid && template.zones && template.zones.length > 0) {
                     for (let i = 0; i < template.zones.length; i++) {
                         const zone = template.zones[i];
+                        const abs = percentToAbsolute(zone);
                         const rect = Dynamsoft.DDV.annotationManager.createAnnotation(pageUid, 'rectangle', {
-                            x: zone.x,
-                            y: zone.y,
-                            width: zone.width,
-                            height: zone.height,
+                            x: abs.x,
+                            y: abs.y,
+                            width: abs.width,
+                            height: abs.height,
                             borderColor: getZoneColor(i),
                             borderWidth: 2,
                             background: getZoneColor(i) + '22',
@@ -931,10 +960,17 @@
                     if (zoneIdx === undefined || zoneIdx >= template.zones.length) continue;
 
                     const newOpts = modified.newOptions;
-                    if (newOpts.x !== undefined) template.zones[zoneIdx].x = newOpts.x;
-                    if (newOpts.y !== undefined) template.zones[zoneIdx].y = newOpts.y;
-                    if (newOpts.width !== undefined) template.zones[zoneIdx].width = newOpts.width;
-                    if (newOpts.height !== undefined) template.zones[zoneIdx].height = newOpts.height;
+                    if (newOpts.x !== undefined || newOpts.y !== undefined || newOpts.width !== undefined || newOpts.height !== undefined) {
+                        const ann = Dynamsoft.DDV.annotationManager.getAnnotationsByUids([modified.uid])[0];
+                        if (ann) {
+                            const opts = ann.getOptions();
+                            const pct = absoluteToPercent({ x: opts.x, y: opts.y, width: opts.width, height: opts.height });
+                            template.zones[zoneIdx].x = pct.x;
+                            template.zones[zoneIdx].y = pct.y;
+                            template.zones[zoneIdx].width = pct.width;
+                            template.zones[zoneIdx].height = pct.height;
+                        }
+                    }
                 }
                 saveTemplates();
                 renderZoneList();
