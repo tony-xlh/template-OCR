@@ -1,6 +1,7 @@
 <html>
     <head>
        <script src="https://cdn.jsdelivr.net/npm/dwt/dist/dynamsoft.webtwain.min.js"></script>
+       <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
        <style>
            html, body {
                margin: 0;
@@ -388,10 +389,10 @@
                 document.getElementById('ocrResultsSection').classList.remove('visible');
             }
 
-            function performOCR() {
+            async function performOCR() {
                 var select = document.getElementById('templateSelect');
                 var index = parseInt(select.value);
-                var templates = loadTemplates();
+                var templates = await loadTemplates();
 
                 if (isNaN(index) || index < 0 || index >= templates.length) {
                     alert('Please select a template first.');
@@ -454,17 +455,17 @@
             }
 
             // ========== Template loading ==========
-            function loadTemplates() {
+            async function loadTemplates() {
                 try {
-                    var raw = localStorage.getItem('ocr_templates');
-                    return raw ? JSON.parse(raw) : [];
+                    var raw = await localforage.getItem('ocr_templates');
+                    return raw || [];
                 } catch (e) {
                     return [];
                 }
             }
 
-            function populateTemplateSelect() {
-                var templates = loadTemplates();
+            async function populateTemplateSelect() {
+                var templates = await loadTemplates();
                 var select = document.getElementById('templateSelect');
                 select.innerHTML = '<option value="">-- Choose a template --</option>';
                 for (var i = 0; i < templates.length; i++) {
@@ -475,10 +476,10 @@
                 }
             }
 
-            function onTemplateSelect() {
+            async function onTemplateSelect() {
                 var select = document.getElementById('templateSelect');
                 var index = parseInt(select.value);
-                var templates = loadTemplates();
+                var templates = await loadTemplates();
                 var thumb = document.getElementById('sampleThumb');
                 var thumbPh = document.getElementById('sampleThumbPlaceholder');
                 var info = document.getElementById('templateInfo');
