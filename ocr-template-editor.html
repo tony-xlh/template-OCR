@@ -291,10 +291,10 @@
                 const dims = getPageDimensions();
                 if (!dims) return { x: zone.x, y: zone.y, width: zone.width, height: zone.height };
                 return {
-                    x: zone.x * dims.width / 100,
-                    y: zone.y * dims.height / 100,
-                    width: zone.width * dims.width / 100,
-                    height: zone.height * dims.height / 100
+                    x: zone.x * dims.width,
+                    y: zone.y * dims.height,
+                    width: zone.width * dims.width,
+                    height: zone.height * dims.height
                 };
             }
 
@@ -302,10 +302,10 @@
                 const dims = getPageDimensions();
                 if (!dims) return { x: zone.x, y: zone.y, width: zone.width, height: zone.height };
                 return {
-                    x: zone.x / dims.width * 100,
-                    y: zone.y / dims.height * 100,
-                    width: zone.width / dims.width * 100,
-                    height: zone.height / dims.height * 100
+                    x: zone.x / dims.width,
+                    y: zone.y / dims.height,
+                    width: zone.width / dims.width,
+                    height: zone.height / dims.height
                 };
             }
 
