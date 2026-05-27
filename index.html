@@ -324,26 +324,25 @@
                 if (ocrResult.blocks) {
                     for (var b = 0; b < ocrResult.blocks.length; b++) {
                         var block = ocrResult.blocks[b];
-                        var geom = block.geometry;
-                        var cx = (geom.left + geom.right) / 2;
-                        var cy = (geom.top + geom.bottom) / 2;
+                        if (block.lines) {
+                            for (var l = 0; l < block.lines.length; l++) {
+                                var line = block.lines[l];
+                                if (line.words) {
+                                    for (var w = 0; w < line.words.length; w++) {
+                                        var word = line.words[w];
+                                        var geom = word.geometry;
+                                        var cx = (geom.left + geom.right) / 2;
+                                        var cy = (geom.top + geom.bottom) / 2;
 
-                        for (var z = 0; z < rects.length; z++) {
-                            var r = rects[z];
-                            if (cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom) {
-                                var blockText = '';
-                                if (block.lines) {
-                                    for (var l = 0; l < block.lines.length; l++) {
-                                        var line = block.lines[l];
-                                        if (line.words) {
-                                            for (var w = 0; w < line.words.length; w++) {
-                                                blockText += (blockText ? ' ' : '') + line.words[w].value;
+                                        for (var z = 0; z < rects.length; z++) {
+                                            var r = rects[z];
+                                            if (cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom) {
+                                                results[z].text += (results[z].text ? ' ' : '') + word.value;
+                                                break;
                                             }
                                         }
                                     }
                                 }
-                                results[z].text += (results[z].text ? ' ' : '') + blockText;
-                                break;
                             }
                         }
                     }
