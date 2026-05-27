@@ -478,6 +478,10 @@
                     updateSamplePreview('');
                     currentTemplateIndex = -1;
                     templateSelect.value = '';
+                    if (!currentDoc || !editViewer) return;
+                    if (currentDoc.pages.length > 0) {
+                        currentDoc.deleteAllPages();
+                    }
                 } else if (currentTemplateIndex > index) {
                     currentTemplateIndex--;
                 }
