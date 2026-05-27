@@ -971,10 +971,38 @@
             });
 
             Dynamsoft.DDV.annotationManager.on('annotationsDeleted', (e) => {
-                // Clean up zoneAnnotationMap for deleted annotations
+                const template = getCurrentTemplate();
+                if (!template) return;
+
+                // Collect zone indices to delete, sorted descending
+                const indicesToDelete = [];
                 for (const uid of e.annotationUids) {
+                    const idx = zoneAnnotationMap.get(uid);
+                    if (idx !== undefined) {
+                        indicesToDelete.push(idx);
+                    }
                     zoneAnnotationMap.delete(uid);
                 }
+                indicesToDelete.sort((a, b) => b - a);
+
+                // Remove zones from template (in reverse order to keep indices valid)
+                for (const idx of indicesToDelete) {
+                    template.zones.splice(idx, 1);
+                }
+
+                // Re-index remaining zone-annotation mappings
+                const newMap = new Map();
+                for (const [annUid, zoneIdx] of zoneAnnotationMap) {
+                    let newIdx = zoneIdx;
+                    for (const deletedIdx of indicesToDelete) {
+                        if (zoneIdx > deletedIdx) newIdx--;
+                    }
+                    newMap.set(annUid, newIdx);
+                }
+                zoneAnnotationMap = newMap;
+
+                saveTemplates();
+                renderZoneList();
             });
 
             // Handle tool mode changes (DDV auto-switches to "pan" after drawing)
