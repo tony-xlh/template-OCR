@@ -192,6 +192,7 @@
             let isDrawing = false;
             let editViewer = null;
             let currentDoc = null;
+            let importing = false;
 
             // =========================================================
             // DOM refs
@@ -375,10 +376,15 @@
             }
 
             async function loadTemplateToViewer(template) {
+                if (!currentDoc || !editViewer) return;
+
+                // Always delete existing pages first so stale annotations can't
+                // be picked up by rebuildAnnotationMap (deleteAnnotations is async)
+                if (currentDoc.pages.length > 0) {
+                    currentDoc.deleteAllPages();
+                }
                 clearAllAnnotations();
                 zoneAnnotationMap.clear();
-
-                if (!currentDoc || !editViewer) return;
 
                 // Show preview in sidebar
                 updateSamplePreview(template.sampleImage || '');
@@ -386,10 +392,6 @@
                 // Load sample image/PDF
                 if (template.sampleImage) {
                     const blob = base64ToBlob(template.sampleImage);
-                    // Delete existing pages and load new one
-                    if (currentDoc.pages.length > 0) {
-                        currentDoc.deleteAllPages();
-                    }
                     const isPdf = blob.type === 'application/pdf';
                     const source = isPdf
                         ? { fileData: blob, convertMode: Dynamsoft.DDV.EnumConvertMode.CM_AUTO }
@@ -419,7 +421,9 @@
                     }
                 }
 
-                editViewer.fitMode = 'width';
+                if (currentDoc.pages.length > 0) {
+                    editViewer.fitMode = 'width';
+                }
             }
 
             function syncAnnotationsToTemplate() {
@@ -428,6 +432,9 @@
 
                 const pageUid = editViewer.getCurrentPageUid();
                 if (!pageUid) return;
+
+                // Don't overwrite template zones if there's nothing to sync
+                if (zoneAnnotationMap.size === 0) return;
 
                 const annotations = Dynamsoft.DDV.annotationManager.getAnnotationsByPage(pageUid);
                 // Rebuild zones from current annotations, preserving names
@@ -685,10 +692,12 @@
             }
 
             function importTemplates(file) {
+                importing = true;
                 const reader = new FileReader();
                 reader.onload = async (e) => {
                     try {
                         const imported = JSON.parse(e.target.result);
+                        
                         if (!Array.isArray(imported)) throw new Error('Invalid format');
                         if (!confirm(`Import ${imported.length} template(s)? Existing templates will be merged (same name = overwrite).`)) return;
 
@@ -703,11 +712,18 @@
                                 templates.push(t);
                             }
                         }
+                        // Clear viewer state before loading imported template to avoid
+                        // syncAnnotationsToTemplate overwriting imported data with stale annotations
+                        clearAllAnnotations();
+                        zoneAnnotationMap.clear();
+                        currentTemplateIndex = -1;
                         saveTemplates();
                         await selectTemplate(0);
                         alert('Import successful!');
                     } catch (err) {
                         alert('Import failed: ' + err.message);
+                    } finally {
+                        importing = false;
                     }
                 };
                 reader.readAsText(file);
@@ -971,6 +987,7 @@
             });
 
             Dynamsoft.DDV.annotationManager.on('annotationsDeleted', (e) => {
+                if (importing) return; // Ignore deletions during import (we clear annotations manually)
                 const template = getCurrentTemplate();
                 if (!template) return;
 
