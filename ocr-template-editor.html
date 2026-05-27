@@ -785,6 +785,25 @@
                 await sleep(300);
                 editViewer.fitMode = 'width';
 
+                // Re-create zone annotations after replacing sample
+                const pageUid = editViewer.getCurrentPageUid();
+                if (pageUid && template.zones && template.zones.length > 0) {
+                    for (let i = 0; i < template.zones.length; i++) {
+                        const zone = template.zones[i];
+                        const rect = Dynamsoft.DDV.annotationManager.createAnnotation(pageUid, 'rectangle', {
+                            x: zone.x,
+                            y: zone.y,
+                            width: zone.width,
+                            height: zone.height,
+                            borderColor: getZoneColor(i),
+                            borderWidth: 2,
+                            background: getZoneColor(i) + '22',
+                            opacity: 0.85
+                        });
+                        zoneAnnotationMap.set(rect.uid, i);
+                    }
+                }
+
                 // Store base64 for template persistence
                 const base64 = await blobToBase64(file);
                 template.sampleImage = base64;
