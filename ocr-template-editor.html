@@ -510,7 +510,7 @@
                                 <input type="text" value="${escapeHtml(z.name)}"
                                     data-index="${i}" class="zone-name-input"
                                     placeholder="Zone name">
-                                <span class="zone-coords">(${Math.round(z.x)},${Math.round(z.y)} ${Math.round(z.width)}x${Math.round(z.height)})</span>
+                                <span class="zone-coords">(${z.x.toFixed(2)},${z.y.toFixed(2)} ${z.width.toFixed(2)}x${z.height.toFixed(2)})</span>
                                 <button class="small danger delete-zone-btn" data-index="${i}" title="Delete zone">x</button>
                             </div>`;
                     }).join('');
