@@ -128,6 +128,23 @@
                text-align: center;
                padding: 30px 0;
            }
+           #ocrResultsSection { display: none; }
+           #ocrResultsSection.visible { display: block; }
+           #ocrStatus { font-size: 12px; color: #fe8e14; text-align: center; padding: 8px; }
+           .results-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+           .results-table th { background: #f0f2f5; padding: 6px 8px; text-align: left; font-size: 11px; text-transform: uppercase; color: #6c757d; border-bottom: 2px solid #dee2e6; position: sticky; top: 0; }
+           .results-table td { padding: 6px 8px; border-bottom: 1px solid #e9ecef; vertical-align: top; }
+           .results-table .idx-cell { width: 28px; text-align: center; color: #6c757d; vertical-align: middle; }
+           .results-table .fields-cell { color: #212529; word-break: break-word; line-height: 1.6; }
+           .results-table .fields-cell .kv-pair { display: block; }
+           .results-table .fields-cell .kv-key { font-weight: 600; }
+           .results-table .fields-cell .kv-value { color: #495057; }
+           .results-table .thumb-cell { width: 90px; text-align: center; vertical-align: middle; }
+           .results-table .thumb-cell img { max-width: 80px; max-height: 60px; border: 1px solid #dee2e6; border-radius: 2px; display: block; margin: 0 auto; }
+           .results-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+           .results-header span { font-size: 12px; color: #6c757d; }
+           .results-header button { padding: 2px 8px; font-size: 11px; border: 1px solid #ccc; border-radius: 3px; background: #fff; cursor: pointer; }
+           #ocrTableWrapper { max-height: 300px; overflow-y: auto; }
        </style>
     </head>
 
@@ -135,6 +152,7 @@
         <div id="toolbar">
             <input type="button" value="Scan" onclick="AcquireImage();" />
             <input type="button" value="Load File" onclick="LoadFile();" />
+            <input type="button" value="OCR" onclick="performOCR();" style="background:#fe8e14;color:#fff;font-weight:700;border-color:#fe8e14;" />
             <span style="color:#888;font-size:12px;margin-left:auto;">OCR Template Viewer</span>
         </div>
         <div class="main-area">
@@ -156,6 +174,19 @@
                         <div class="template-info" id="templateInfo" style="display:none;">
                             <span id="infoName"></span>
                             <span id="infoZones"></span>
+                        </div>
+                    </div>
+                    <div class="section" id="ocrResultsSection">
+                        <div class="results-header">
+                            <span class="section-title" style="margin-bottom:0;">OCR Results</span>
+                            <button id="btnClearResults" onclick="clearOCRResults();">Clear</button>
+                        </div>
+                        <div id="ocrStatus"></div>
+                        <div id="ocrTableWrapper">
+                            <table class="results-table" id="resultsTable">
+                                <thead><tr><th class="idx-cell">#</th><th>Fields</th><th class="thumb-cell">Thumb</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -213,6 +244,12 @@
             }
 
             // ========== Helpers ==========
+            function escapeHtml(str) {
+                var div = document.createElement('div');
+                div.textContent = str || '';
+                return div.innerHTML;
+            }
+
             function base64ToBlob(dataUrl) {
                 var parts = dataUrl.split(',');
                 var header = parts[0];
@@ -230,6 +267,183 @@
                     byteArrays.push(new Uint8Array(byteNumbers));
                 }
                 return new Blob(byteArrays, { type: mimeType });
+            }
+
+            // ========== OCR ==========
+            var ocrRowCounter = 0;
+
+            function getImageDataUrl(index) {
+                return new Promise(function (resolve, reject) {
+                    DWTObject.ConvertToBase64(
+                        [index],
+                        Dynamsoft.DWT.EnumDWT_ImageType.IT_PNG,
+                        function (result, indices, type) {
+                            var data = result.getData(0, result.getLength());
+                            if (data.indexOf('data:') !== 0) {
+                                var mime = 'image/png';
+                                if (type === Dynamsoft.DWT.EnumDWT_ImageType.IT_JPG) mime = 'image/jpeg';
+                                else if (type === Dynamsoft.DWT.EnumDWT_ImageType.IT_TIF) mime = 'image/tiff';
+                                data = 'data:' + mime + ';base64,' + data;
+                            }
+                            resolve(data);
+                        },
+                        function (errorCode, errorString) {
+                            reject(new Error(errorString));
+                        }
+                    );
+                });
+            }
+
+            function loadImage(dataUrl) {
+                return new Promise(function (resolve, reject) {
+                    var img = new Image();
+                    img.onload = function () { resolve(img); };
+                    img.onerror = function () { reject(new Error('Failed to load image')); };
+                    img.src = dataUrl;
+                });
+            }
+
+            function createPageThumbnail(dataUrl, maxW, maxH) {
+                return loadImage(dataUrl).then(function (img) {
+                    var canvas = document.createElement('canvas');
+                    var scale = Math.min(1, maxW / img.naturalWidth, maxH / img.naturalHeight);
+                    canvas.width = Math.max(2, img.naturalWidth * scale);
+                    canvas.height = Math.max(2, img.naturalHeight * scale);
+                    var ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    return canvas.toDataURL('image/png');
+                });
+            }
+
+            function matchBlocksToZones(ocrResult, zones, rects) {
+                var results = [];
+                for (var i = 0; i < zones.length; i++) {
+                    results.push({ name: zones[i].name, text: '' });
+                }
+
+                if (ocrResult.blocks) {
+                    for (var b = 0; b < ocrResult.blocks.length; b++) {
+                        var block = ocrResult.blocks[b];
+                        var geom = block.geometry;
+                        var cx = (geom.left + geom.right) / 2;
+                        var cy = (geom.top + geom.bottom) / 2;
+
+                        for (var z = 0; z < rects.length; z++) {
+                            var r = rects[z];
+                            if (cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom) {
+                                var blockText = '';
+                                if (block.lines) {
+                                    for (var l = 0; l < block.lines.length; l++) {
+                                        var line = block.lines[l];
+                                        if (line.words) {
+                                            for (var w = 0; w < line.words.length; w++) {
+                                                blockText += (blockText ? ' ' : '') + line.words[w].value;
+                                            }
+                                        }
+                                    }
+                                }
+                                results[z].text += (results[z].text ? ' ' : '') + blockText;
+                                break;
+                            }
+                        }
+                    }
+                }
+                return results;
+            }
+
+            function addOCRResultRow(zoneResults, thumbDataUrl, template) {
+                var section = document.getElementById('ocrResultsSection');
+                var tbody = document.querySelector('#resultsTable tbody');
+                var status = document.getElementById('ocrStatus');
+
+                section.classList.add('visible');
+                ocrRowCounter++;
+
+                var fieldsHtml = '';
+                for (var i = 0; i < zoneResults.length; i++) {
+                    fieldsHtml += '<span class="kv-pair"><span class="kv-key">' + escapeHtml(zoneResults[i].name) + ':</span> <span class="kv-value">' + escapeHtml(zoneResults[i].text || '(no text)') + '</span></span>';
+                }
+
+                var row = tbody.insertRow();
+                row.innerHTML =
+                    '<td class="idx-cell">' + ocrRowCounter + '</td>' +
+                    '<td class="fields-cell">' + fieldsHtml + '</td>' +
+                    '<td class="thumb-cell"><img src="' + thumbDataUrl + '" alt="page thumb" /></td>';
+
+                status.textContent = 'Template: ' + (template.templateName || 'Unnamed') + ' | ' + zoneResults.length + ' field(s) recognized';
+            }
+
+            function clearOCRResults() {
+                var tbody = document.querySelector('#resultsTable tbody');
+                tbody.innerHTML = '';
+                ocrRowCounter = 0;
+                document.getElementById('ocrStatus').textContent = '';
+                document.getElementById('ocrResultsSection').classList.remove('visible');
+            }
+
+            function performOCR() {
+                var select = document.getElementById('templateSelect');
+                var index = parseInt(select.value);
+                var templates = loadTemplates();
+
+                if (isNaN(index) || index < 0 || index >= templates.length) {
+                    alert('Please select a template first.');
+                    return;
+                }
+
+                if (!DWTObject || DWTObject.HowManyImagesInBuffer === 0) {
+                    alert('No image in buffer. Please scan or load an image first.');
+                    return;
+                }
+
+                var template = templates[index];
+                if (!template.zones || template.zones.length === 0) {
+                    alert('Selected template has no zones defined.');
+                    return;
+                }
+
+                var currentIndex = DWTObject.CurrentImageIndexInBuffer;
+                var status = document.getElementById('ocrStatus');
+                var section = document.getElementById('ocrResultsSection');
+                section.classList.add('visible');
+                status.textContent = 'Running OCR...';
+
+                getImageDataUrl(currentIndex)
+                    .then(function (dataUrl) {
+                        return loadImage(dataUrl).then(function (img) {
+                            return { dataUrl: dataUrl, img: img };
+                        });
+                    })
+                    .then(function (imageInfo) {
+                        var img = imageInfo.img;
+                        var rects = template.zones.map(function (zone) {
+                            return {
+                                left: Math.round(zone.x * img.naturalWidth),
+                                top: Math.round(zone.y * img.naturalHeight),
+                                right: Math.round((zone.x + zone.width) * img.naturalWidth),
+                                bottom: Math.round((zone.y + zone.height) * img.naturalHeight)
+                            };
+                        });
+
+                        return DWTObject.Addon.OCRKit.Recognize(
+                            currentIndex,
+                            { rects: rects }
+                        ).then(function (ocrResult) {
+                            console.log(ocrResult);
+                            return { dataUrl: imageInfo.dataUrl, ocrResult: ocrResult, rects: rects };
+                        });
+                    })
+                    .then(function (result) {
+                        var zoneResults = matchBlocksToZones(result.ocrResult, template.zones, result.rects);
+                        return createPageThumbnail(result.dataUrl, 80, 60).then(function (thumbDataUrl) {
+                            addOCRResultRow(zoneResults, thumbDataUrl, template);
+                        });
+                    })
+                    .catch(function (err) {
+                        status.textContent = '';
+                        section.classList.remove('visible');
+                        alert('OCR failed: ' + (err.message || String(err)));
+                    });
             }
 
             // ========== Template loading ==========
