@@ -163,6 +163,7 @@
             
             <input type="button" value="Load Samples" onclick="loadSamples();" />
             <input type="button" value="Save as JPG" onclick="SaveAsJPG();" />
+            <input type="button" value="Show Zones" onclick="showZones();" />
             <span id="loadStatus" style="color:#666;font-size:12px;margin-left:4px;"></span>
             <span style="color:#888;font-size:12px;margin-left:auto;">OCR with Template</span>
         </div>
@@ -423,6 +424,46 @@
                 ocrRowCounter = 0;
                 document.getElementById('ocrStatus').textContent = '';
                 document.getElementById('ocrResultsSection').classList.remove('visible');
+            }
+
+            async function showZones() {
+                var select = document.getElementById('templateSelect');
+                var index = parseInt(select.value);
+                var templates = await loadTemplates();
+
+                if (isNaN(index) || index < 0 || index >= templates.length) {
+                    alert('Please select a template first.');
+                    return;
+                }
+
+                if (!DWTObject || DWTObject.HowManyImagesInBuffer === 0) {
+                    alert('No image in buffer. Please scan or load an image first.');
+                    return;
+                }
+
+                var template = templates[index];
+                if (!template.zones || template.zones.length === 0) {
+                    alert('Selected template has no zones defined.');
+                    return;
+                }
+
+                var currentIndex = DWTObject.CurrentImageIndexInBuffer;
+                try {
+                    var dataUrl = await getImageDataUrl(currentIndex);
+                    var img = await loadImage(dataUrl);
+                    var areas = template.zones.map(function (zone) {
+                        return {
+                            left: Math.round(zone.x * img.naturalWidth),
+                            top: Math.round(zone.y * img.naturalHeight),
+                            right: Math.round((zone.x + zone.width) * img.naturalWidth),
+                            bottom: Math.round((zone.y + zone.height) * img.naturalHeight)
+                        };
+                    });
+                    DWTObject.Viewer.cursor = 'crosshair';
+                    DWTObject.Viewer.setSelectedAreas(areas);
+                } catch (err) {
+                    alert('Failed to show zones: ' + (err.message || String(err)));
+                }
             }
 
             async function performOCR() {
