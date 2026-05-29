@@ -449,17 +449,17 @@
 
                 var currentIndex = DWTObject.CurrentImageIndexInBuffer;
                 try {
-                    var dataUrl = await getImageDataUrl(currentIndex);
-                    var img = await loadImage(dataUrl);
+                    var imgWidth = DWTObject.GetImageWidth(currentIndex);
+                    var imgHeight = DWTObject.GetImageHeight(currentIndex);
                     var areas = template.zones.map(function (zone) {
                         return {
-                            left: Math.round(zone.x * img.naturalWidth),
-                            top: Math.round(zone.y * img.naturalHeight),
-                            right: Math.round((zone.x + zone.width) * img.naturalWidth),
-                            bottom: Math.round((zone.y + zone.height) * img.naturalHeight)
+                            left: Math.round(zone.x * imgWidth),
+                            top: Math.round(zone.y * imgHeight),
+                            right: Math.round((zone.x + zone.width) * imgWidth),
+                            bottom: Math.round((zone.y + zone.height) * imgHeight)
                         };
                     });
-                    DWTObject.Viewer.cursor = 'crosshair';
+                    DWTObject.Viewer.clearSelectedAreas();
                     DWTObject.Viewer.setSelectedAreas(areas);
                 } catch (err) {
                     alert('Failed to show zones: ' + (err.message || String(err)));
