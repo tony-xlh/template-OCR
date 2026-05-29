@@ -234,9 +234,7 @@
                         .then(function () {
                             return DWTObject.AcquireImageAsync({
                                 IfCloseSourceAfterAcquire: true,
-                                IfShowUI: false,
-                                PixelType: Dynamsoft.DWT.EnumDWT_PixelType.TWPT_GRAY,
-                                Resolution: 150,
+                                IfShowUI: true,
                             });
                         })
                         .catch(function (exp) {
